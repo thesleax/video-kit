@@ -3,7 +3,7 @@
   .venv/bin/python scripts/audit.py out/proxy.mp4
 
 Prints the fastest half-second windows in full-resolution px per 60 fps frame (90th percentile optical flow).
-Budget (docs/STYLE.md): <= 12 everywhere. Above that viewers read it as "too fast" - give the move more time,
+Budget (the skill's references/STYLE.md): <= 12 everywhere. Above that viewers read it as "too fast" - give the move more time,
 less distance or less zoom change. Page-switch crossfades show up as short ~6-8 spikes; that's fine.
 """
 import sys

@@ -59,4 +59,4 @@ bash scripts/fetch-sfx.sh
 
 [ -f video.config.json ] || cp video.config.example.json video.config.json
 mkdir -p public/pages public/vo public/music public/fonts public/brand out
-say "done — next: PLAYBOOK.md step 1 (npm run detect)"
+say "done — continue with the promo-video skill, step 2 (npm run detect)"

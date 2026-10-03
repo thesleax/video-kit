@@ -7,7 +7,8 @@
 //   "re:<regex>"       innermost elements whose text matches, document order
 //   "<exact text>"     smallest element with exactly that text → its clickable ancestor
 // Page options: path, queries, click (text of a control to press first), waitFor (selector), tall (keep N px).
-// Config options: site, viewport, scale, colorScheme, locale, headers, cookies, localStorage, hideSelectors, hideFixedText.
+// Config options: site, viewport, scale, colorScheme, locale, headers, cookies, localStorage, hideSelectors,
+//   hideFixedText (words: hides fixed/sticky/absolute popovers, banners and promo boxes containing them).
 // Usage: node scripts/capture.mjs            all pages in video.config.json
 //        ONLY=home,pricing node scripts/capture.mjs   re-shoot some (rects.json is merged)
 import { chromium } from "playwright";
@@ -35,13 +36,18 @@ async function hideOverlays(page) {
   await page.evaluate((words) => {
     const re = words.length ? new RegExp(words.join("|"), "i") : null;
     if (!re) return;
-    for (const e of document.querySelectorAll("body *")) if (getComputedStyle(e).position === "fixed" && re.test(e.innerText)) e.style.display = "none";
+    // fixed / sticky / absolute boxes (banners, popovers, promo cards) whose text matches — never a big page region
+    for (const e of document.querySelectorAll("body *")) {
+      const pos = getComputedStyle(e).position, r = e.getBoundingClientRect();
+      if (["fixed", "sticky", "absolute"].includes(pos) && r.width * r.height < innerWidth * innerHeight * 0.6 && re.test(e.innerText)) e.style.display = "none";
+    }
   }, CFG.hideFixedText ?? []);
 }
 
 const rectsOf = (page, q) => page.evaluate((q) => {
   const box = (e) => { const r = e.getBoundingClientRect(); const a = e.closest("a"); return [...[r.x, r.y + scrollY, r.width, r.height].map(Math.round), ...(a ? [a.getAttribute("href")] : [])]; };
-  const vis = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+  // visible and horizontally on the page (marquees park copies far off to the side)
+  const vis = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.right > 0 && r.left < innerWidth; };
   if (q.startsWith("css:")) return [...document.querySelectorAll(q.slice(4))].filter(vis).slice(0, 14).map(box);
   const text = [...document.querySelectorAll("a,button,[role=tab],h1,h2,h3,h4,span,div,p,td,li,label")].filter(vis);
   if (q.startsWith("card:")) {

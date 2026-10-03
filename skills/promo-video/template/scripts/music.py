@@ -7,7 +7,7 @@
   .venv/bin/python scripts/music.py cut public/music/track.mp3 A B [C D ...]
       keeps [0,A) + [B,C) + [D,end) ... with 30 ms crossfades -> public/music/edit.wav
 
-How to use the numbers (see docs/MUSIC.md): logo hit on the first big onset after the intro, feature tour on
+How to use the numbers (see the skill's references/MUSIC.md): logo hit on the first big onset after the intro, feature tour on
 drop 1, the "problem/question" beat in the breakdown, the hero feature exactly on drop 2, outro on the music's own
 outro. Cut whole phrases (8 bars) from the middle of a drop when the video is shorter than the track.
 """

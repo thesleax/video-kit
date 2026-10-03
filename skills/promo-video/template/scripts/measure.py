@@ -4,6 +4,9 @@
       For a line chart inside the card rect (CSS px, e.g. from rect(page, "card:^player count")):
       finds the line's colour (most frequent saturated colour), the plotting box it spans and its highest point.
       Prints  plot=[x, y, w, h]  peak=[x, y]  -> ChartReveal plot / peak.
+  .venv/bin/python scripts/measure.py color <page> <x> <y> <w> <h>
+      Dominant colours inside a rect (e.g. the primary button, a card, the page background) as hex — for brand.ts
+      when the site's colours live in utility classes / JS rather than CSS variables.
 """
 import sys
 import numpy as np
@@ -14,6 +17,12 @@ x0, y0, w, h = (float(v) for v in box)
 im = np.asarray(Image.open(f"public/pages/{page}.jpg").convert("RGB")).astype(int)
 S = 2  # pages are captured at 2x
 crop = im[int(y0 * S):int((y0 + h) * S), int(x0 * S):int((x0 + w) * S)]
+if cmd == "color":
+    px = (crop.reshape(-1, 3) // 4) * 4
+    vals, counts = np.unique(px, axis=0, return_counts=True)
+    for i in np.argsort(-counts)[:4]:
+        print("#%02x%02x%02x  %4.1f%%" % (*vals[i], 100 * counts[i] / len(px)))
+    sys.exit()
 r, g, b = crop[..., 0], crop[..., 1], crop[..., 2]
 mx, mn = crop.max(-1), crop.min(-1)
 sat = (mx - mn) > 90  # saturated pixels: the series line, not text/grid

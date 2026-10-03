@@ -1,30 +1,44 @@
-# PLAYBOOK — make the promo video for the project this kit was cloned into
-
-You (the agent) are reading this because the user cloned this repo into one of their projects, usually as
-`<project>/video/`, and asked for a video. Follow the steps in order. The result is a ~60–100 s, 1080p60
-product video: a camera gliding over the product's **real** UI, a macOS cursor really using it, a
-voice-over with word-synced captions, licensed music with scenes cut on its beats, and modern UI sound effects.
-
-The method was proven on a real product launch; every rule in `docs/STYLE.md` is there because the user rejected
-the alternative. Read `docs/STYLE.md` before step 6. The other docs are referenced where they apply.
-
-**Never edit the host project.** Everything lives in this folder. The host is only read (step 2) and filmed
-(step 5). Work in this folder as cwd; `..` is the host project.
-
+---
+name: promo-video
+description: Make a polished, animated promo / launch / demo video of the user's web product — the product's real UI filmed in close-up with a 3D camera, a macOS cursor really clicking through it, word-synced voice-over captions, licensed music with scenes cut on its beats, and modern UI sound effects, rendered to 1080p60 MP4 with Remotion. Works for any web stack (Next.js, Nuxt, Astro, Vue, React, Svelte, Angular, Laravel, Django…) because it films the running site.
+when_to_use: The user asks for a promo, launch, trailer, showcase, explainer or demo video of their app, website, SaaS, tool or project (in any language), or wants to turn their site into a marketing video.
+argument-hint: "[notes: language, length, music, features to show]"
 ---
 
-## 0 · What you have
+# Product promo video
 
-| Path | What |
+You are making a ~60–100 s, 1080p60 product video of the project in the current working directory: a camera
+gliding over the product's **real** UI, a macOS cursor really using it, a voice-over with word-synced captions,
+licensed music with scenes cut on its beats, and modern UI sound effects. User notes: $ARGUMENTS
+
+The method was proven on real product launches; every rule in `references/STYLE.md` exists because a user rejected
+the alternative. Read it before step 6. The other references are pointed to where they apply:
+[STYLE](references/STYLE.md) · [SCENES](references/SCENES.md) · [VOICE](references/VOICE.md) ·
+[MUSIC](references/MUSIC.md) · [SOUND](references/SOUND.md) · [QA](references/QA.md)
+
+**Never edit the host project.** All work happens in a `video/` folder created next to it. The host is only read
+(step 2) and filmed (step 5). If its own instructions (CLAUDE.md / AGENTS.md) forbid running it on this machine,
+film the deployed site instead.
+
+## 0 · Create the video workspace
+
+From the project root:
+```bash
+[ -d video ] || cp -r "${CLAUDE_SKILL_DIR}/template" video   # the Remotion engine, recipes and tools
+cd video                                                        # every later command runs here; .. is the host
+```
+If `video/` already exists, this is a follow-up: read `video/src/project/` to see where the last session stopped.
+The host repo should ignore `video/` (suggest adding it to the host's `.gitignore`, or committing it deliberately).
+
+| Path (in `video/`) | What |
 |---|---|
 | `setup.sh` | one-time install on a fresh Ubuntu/Debian machine |
 | `video.config.json` | site URL + pages to film (from `video.config.example.json`) |
-| `src/kit/` | camera Stage, Cursor, Lift, Num, Say, TopTab … (product-agnostic, don't fork per project) |
+| `src/kit/` | camera Stage, Cursor, Lift, Num, Say, TopTab … (product-agnostic) |
 | `src/recipes/` | ready scenes: IconReveal, LogoReveal, Glide, Spoken, Caption, Tour, Counters, Typing, ChartReveal, LiveLine, Toggle, Toasts, Outro |
 | `src/project/` | **the only per-project code**: `brand.ts`, `script.txt`, `timeline.ts`, `scenes.tsx` (+ generated `rects.json`, `vo.json`) |
 | `src/Promo.tsx` | engine: plays the timeline, ducks music under voice, stems for checks |
 | `scripts/` | detect, capture, pages, font, tts, music, measure, stills, dump-timeline, audit, mixcheck, master, fetch-sfx |
-| `docs/` | STYLE (rules), SCENES (recipe catalog), VOICE, MUSIC, SOUND, QA |
 
 ## 1 · Setup (once per machine)
 
@@ -37,8 +51,9 @@ Check: `node -v` ≥ 20, `ffmpeg -version`, `whisper-cli -h`, `ls public/sfx | w
 ## 2 · Understand the product
 
 ```bash
-npm run detect          # framework, run command, live URL hints, color tokens, fonts, logo files, routes
+npm run detect          # framework, run command, live URL hints, color tokens (as hex), fonts, logo files, routes
 ```
+If the web app lives in a subfolder (monorepo: `frontend/`, `apps/web/`…), run `node scripts/detect.mjs ../frontend`.
 Then actually learn the product, the way a new teammate would:
 - Read the host `README*`, landing/home page source, i18n strings (they describe features in plain words), docs/about/FAQ pages.
 - List **every user-facing feature**, ranked by what a newcomer cares about. Note the one "hero" feature (the most
@@ -53,27 +68,33 @@ Then actually learn the product, the way a new teammate would:
 
 Fill `src/project/brand.ts`:
 - `colors`: the site's **dark theme** tokens from detect (background, card, primary, foreground, muted fg, border).
+  When detect finds none (colours in Tailwind classes / JS), capture first and read them off the screenshots:
+  `.venv/bin/python scripts/measure.py color <page> <rect of the primary button / a card / the page>`.
   If the site has no dark theme, film light (`colorScheme: "light"` in the config) and use the light tokens;
   keep the video's own background near-black either way (see STYLE).
 - `font`: a **variable** woff2 of the site's font → `public/fonts/brand.woff2`; set `family`. Google Fonts
   (incl. `next/font/google`): `bash scripts/font.sh "Inter"`. Otherwise copy it from `@fontsource-variable/*/files`
   or the public folder.
-- Routes with `[locale]`: film under the locale prefix the live site uses (`/en/…`); detect prints a note.
-- `logo`: the square logo mark (favicon.svg is often perfect) → `public/brand/logo.svg`. `tilt` -12 looks good
+- Routes with `[locale]`: film under the locale prefix the live site uses (`/en/…`); detect prints a note. Some
+  sites pick the language from the browser instead (`/en` redirects to `/`): capture prints each page's final URL —
+  check it, set `"locale"` in the config, and make sure the **content** you'll show is in the video's language
+  (a blog or a list may mix languages: lift an item in the right one).
+- `logo`: the square logo mark (favicon.svg is often perfect) → `mkdir -p public/brand && cp … public/brand/logo.svg`
+  (PNG works too; set `file` accordingly). `tilt` -12 looks good
   for square marks; 0 for round/wordmark-only logos.
 - `name`, `url`.
 
 ## 3 · Agree on the basics with the user (one short message)
 
 Ask only what you can't decide: **language** (default English for reach), **length** (default: fit the track,
-60–100 s), and **music**. Offer the tracks in `docs/MUSIC.md` with links (house artist: Alex_MakeMusic on
+60–100 s), and **music**. Offer the tracks in `references/MUSIC.md` with links (house artist: Alex_MakeMusic on
 Pixabay). Pixabay blocks server downloads, so the user downloads the MP3 and drops it into
-`video/public/music/track.mp3`. Voice: default `af_heart` (see `docs/VOICE.md`); offer samples
+`video/public/music/track.mp3` (`mkdir -p public/music` if setup hasn't created it). Voice: default `af_heart` (see `references/VOICE.md`); offer samples
 (`.venv/bin/python scripts/tts.py voices` after writing line 01) only if they want to choose.
 
 ## 4 · Script and voice
 
-Write `src/project/script.txt` (`id|text` per line) using the structure in `docs/VOICE.md`:
+Write `src/project/script.txt` (`id|text` per line) using the structure in `references/VOICE.md`:
 hook question → "Meet NAME." → one line per feature (in tour order) → the question that sets up the hero feature
 → hero line → extras → "And that's just the beginning." → outro with the URL spelled for speech ("acme dot com").
 Rules: short sentences, numbers the site really shows (read them off the live page), no claims the product doesn't
@@ -89,10 +110,12 @@ Show the user the script (and a listening link if you can publish one) before bu
 ```bash
 .venv/bin/python scripts/music.py analyze public/music/track.mp3
 ```
-Map the structure (docs/MUSIC.md): intro → first hit (logo) → drop 1 (feature tour) → breakdown (the question,
+Map the structure (references/MUSIC.md): intro → first hit (logo) → drop 1 (feature tour) → breakdown (the question,
 typing) → drop 2 (hero reveal) → outro (logo + URL). If the track is longer than the story, remove whole
 8-bar phrases from inside a drop: `scripts/music.py cut public/music/track.mp3 A B` (pick A/B from its
-"best phrase cuts", similarity ≥ 0.99). The engine plays `public/music/edit.wav`.
+"best phrase cuts", similarity ≥ 0.99), or jump from the end of your story straight to the music's pre-outro bar.
+**A and B must both be bar starts from analyze's bar list** — a cut that lands mid-bar shifts the beat. Size the
+cut to the speech: no music-only gap longer than ~3 s before the outro. The engine plays `public/music/edit.wav`.
 
 Write `video.config.json` → `pages`: one entry per screen you will show **and one per state a click produces**
 (a tab, a filter, a search result — use `click` or the URL that click opens). Give each page the `queries` for
@@ -109,10 +132,10 @@ skeleton loaders. Fix with `hideSelectors` / `hideFixedText` / `waitFor`, re-sho
 
 ## 6 · Build the video
 
-Read `docs/STYLE.md` and `docs/SCENES.md` first. Then:
+Read `references/STYLE.md` and `references/SCENES.md` first. Then:
 1. `src/project/timeline.ts`: scenes with start times **on the music's bars/drops** (from analyze), each voice line
    attached to the scene it narrates (`vo`, `voAt` offset), `EXTRA_VO` for "Meet NAME." landing on the logo hit,
-   `END`, `SFX` (docs/SOUND.md has the placement table). `npm run timeline` warns about overlapping lines.
+   `END`, `SFX` (references/SOUND.md has the placement table). `npm run timeline` warns about overlapping lines.
 2. `src/project/scenes.tsx`: one component per scene id, built from recipes. Rects only via
    `rect(page, query, i)`; caption words only via `words(lineId, bold, from, to)` — never typed by hand.
 3. Measure real data you overlay: `scripts/measure.py chart <page> x y w h` gives a chart's plot box and peak.
@@ -120,7 +143,7 @@ Read `docs/STYLE.md` and `docs/SCENES.md` first. Then:
    `out/sheet.png` — look at it after every change; ~30 points across the timeline catch most problems.
    `npm run studio` also works if you can open a browser.
 
-## 7 · Check (all four, every time; details in docs/QA.md)
+## 7 · Check (all four, every time; details in references/QA.md)
 
 ```bash
 npm run proxy && .venv/bin/python scripts/audit.py out/proxy.mp4        # pace: every window ≤ 12 px/frame
@@ -148,7 +171,7 @@ No GPU: ~0.5 s per 1080p60 frame → a 95 s video ≈ 45–60 min. So:
 
 ## What to expect
 
-Following this playbook gives a solid first cut that already respects every rule the reference film was polished
+Following this skill gives a solid first cut that already respects every rule the reference film was polished
 to. That film still took several rounds of the user's notes — expect one or two here too, and budget render time
 for them. The recipes cover the reference film's scenes; a product with a very different hero interaction
 (an editor, a map, a game canvas) may need one custom scene built from the kit (Stage, Lift, Num, Cursor, At).
@@ -157,4 +180,4 @@ for them. The recipes cover the reference film's scenes; a product with a very d
 
 They watch the 720p preview and send notes. Map each note to a rule in STYLE.md (pace, fake clicks, borders,
 audio balance …), fix the cause (not just the frame they saw), re-run the checks, re-render. Add any new rule
-they teach you to `docs/STYLE.md` so the next project starts with it.
+they teach you to `references/STYLE.md` (in this skill: `${CLAUDE_SKILL_DIR}/references/STYLE.md`) so the next project starts with it.

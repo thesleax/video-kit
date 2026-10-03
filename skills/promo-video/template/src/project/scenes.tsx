@@ -1,4 +1,4 @@
-// Scene id → component for timeline.ts. This starter is deliberately small; PLAYBOOK.md step 6 replaces it with
+// Scene id → component for timeline.ts. This starter is deliberately small; the promo-video skill (step 6) replaces it with
 // the real story (Tour / Counters / Typing … from ../recipes). Voice offsets must match timeline.ts voAt.
 import React from "react";
 import { AbsoluteFill } from "remotion";

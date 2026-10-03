@@ -35,6 +35,10 @@ tilted in 3D, depth of field, a cursor using it, short section tabs, bold-light 
   screenshot), not somewhere convenient.
 - macOS cursor (black arrow, white outline; white pointing hand), scaled with the zoom.
 
+- **Content in the video's language.** Everything legible on screen — pages, lifted cards, list items — matches the
+  voice-over's language. Sites that mix languages (a blog, user-generated lists) need you to pick items in the right
+  one; an English video lifting a Turkish blog post was caught in review.
+
 ## Lifted cards
 
 - Cut out the **exact card the site draws**: `card:<label>` query or a `css:` rect — never a guessed rect (a guess
@@ -65,10 +69,10 @@ tilted in 3D, depth of field, a cursor using it, short section tabs, bold-light 
 - Impacts / whooshes are long-tailed: trim them (4th SFX field) or start the line after the hit.
 - Master: two-pass **linear** loudnorm to -14 LUFS (`scripts/master.sh`) — one fixed gain, LRA stays ~2 LU,
   no "sometimes quiet" voice.
-- SFX are modern UI sounds (docs/SOUND.md); the old library's cartoonish ones were called "old-fashioned".
+- SFX are modern UI sounds (references/SOUND.md); the old library's cartoonish ones were called "old-fashioned".
 
 ## Music sync
 
 - Scene starts on bars; the logo on the first big hit; the feature tour on drop 1; question + typing in the
   breakdown; the hero feature's reveal **exactly on drop 2** (the click lands on the drop); outro on the music's own
-  outro, which may mean cutting whole phrases out of the middle (docs/MUSIC.md).
+  outro, which may mean cutting whole phrases out of the middle (references/MUSIC.md).

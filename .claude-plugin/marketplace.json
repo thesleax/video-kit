@@ -1,0 +1,12 @@
+{
+  "name": "video-kit",
+  "description": "Video Kit — product promo videos made by Claude Code from your running site",
+  "owner": { "name": "thesleax", "url": "https://github.com/thesleax" },
+  "plugins": [
+    {
+      "name": "video-kit",
+      "source": "./",
+      "description": "Promo / launch videos of any web project: real UI, real clicks, voice-over, beat-cut music, SFX"
+    }
+  ]
+}

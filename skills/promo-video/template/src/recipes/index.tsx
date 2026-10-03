@@ -1,5 +1,5 @@
 // Reusable scenes. Times in props are SECONDS from the scene start (converted with sec()); rects are page CSS px
-// from rect(). Each recipe follows docs/STYLE.md: one slow camera move per page, real clicks only, lifts cut
+// from rect(). Each recipe follows the skill's references/STYLE.md: one slow camera move per page, real clicks only, lifts cut
 // out the exact card, every big word on screen is spoken.
 import React from "react";
 import { AbsoluteFill, Easing, random, useCurrentFrame } from "remotion";

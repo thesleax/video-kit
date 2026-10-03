@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The effect set from the reference video, from Mixkit (free for commercial use, no attribution; the license
 # doesn't allow redistributing the files themselves, so they're fetched here instead of living in git).
-# name=mixkit id. See docs/SOUND.md for where each one goes and at what volume.
+# name=mixkit id. See the skill's references/SOUND.md for where each one goes and at what volume.
 set -euo pipefail
 mkdir -p public/sfx && cd public/sfx
 declare -A M=(
