@@ -27,7 +27,8 @@ export const C = BRAND.colors;
 export const FONT = `${BRAND.font.family}, system-ui, sans-serif`;
 
 const fontWait = delayRender("brand font");
-const face = new FontFace(BRAND.font.family, `url(${staticFile(BRAND.font.file)}) format("woff2")`, { weight: BRAND.font.weights });
+// no format() hint: Google Fonts may hand out TTF data under any extension, the browser sniffs it
+const face = new FontFace(BRAND.font.family, `url(${staticFile(BRAND.font.file)})`, { weight: BRAND.font.weights });
 face.load().then(() => { document.fonts.add(face); continueRender(fontWait); }, () => continueRender(fontWait));
 
 export const out = Easing.bezier(0.16, 1, 0.3, 1);

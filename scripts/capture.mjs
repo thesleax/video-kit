@@ -49,6 +49,8 @@ const rectsOf = (page, q) => page.evaluate((q) => {
     let e = text.filter((x) => re.test(x.innerText.trim())).sort((a, b) => a.innerText.length - b.innerText.length)[0];
     const isCard = (x) => { const c = getComputedStyle(x); return x.getBoundingClientRect().width > 150 && (parseFloat(c.borderTopWidth) > 0 || !/rgba\(0, 0, 0, 0\)|transparent/.test(c.backgroundColor)); };
     while (e && e !== document.body && !isCard(e)) e = e.parentElement;
+    // a filled title bar inside a card is card-like too: keep climbing while the parent is a card of the same width
+    for (let p = e?.parentElement; p && p !== document.body && isCard(p) && Math.abs(p.getBoundingClientRect().width - e.getBoundingClientRect().width) <= 8; p = p.parentElement) e = p;
     return e && e !== document.body ? [box(e)] : [];
   }
   const re = q.startsWith("re:") ? new RegExp(q.slice(3)) : null;

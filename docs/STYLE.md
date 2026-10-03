@@ -50,6 +50,10 @@ tilted in 3D, depth of field, a cursor using it, short section tabs, bold-light 
   voice is presenting, 1–4 words.
 - Caption style: light weight with the key words bold (`*word*`), 84–120 px, bottom-left over a dark gradient or
   centred over a softened page. Font = the product's own.
+- Don't stack a caption on top of the page's own large headline (landing heroes): frame the camera so the
+  headline sits above the caption band, use a TopTab instead, or let the page's headline be the text.
+- The caption font must be a **variable** font (300–900) or the light/bold mix collapses into all-bold:
+  `bash scripts/font.sh "<Google family>"`, or copy the site's own variable woff2.
 - TopTab: hangs from the top edge, dark glass, rounded bottom corners.
 
 ## Sound

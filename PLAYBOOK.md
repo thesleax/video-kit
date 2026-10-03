@@ -23,7 +23,7 @@ the alternative. Read `docs/STYLE.md` before step 6. The other docs are referenc
 | `src/recipes/` | ready scenes: IconReveal, LogoReveal, Glide, Spoken, Caption, Tour, Counters, Typing, ChartReveal, LiveLine, Toggle, Toasts, Outro |
 | `src/project/` | **the only per-project code**: `brand.ts`, `script.txt`, `timeline.ts`, `scenes.tsx` (+ generated `rects.json`, `vo.json`) |
 | `src/Promo.tsx` | engine: plays the timeline, ducks music under voice, stems for checks |
-| `scripts/` | detect, capture, pages, tts, music, measure, stills, dump-timeline, audit, mixcheck, master, fetch-sfx |
+| `scripts/` | detect, capture, pages, font, tts, music, measure, stills, dump-timeline, audit, mixcheck, master, fetch-sfx |
 | `docs/` | STYLE (rules), SCENES (recipe catalog), VOICE, MUSIC, SOUND, QA |
 
 ## 1 · Setup (once per machine)
@@ -55,8 +55,10 @@ Fill `src/project/brand.ts`:
 - `colors`: the site's **dark theme** tokens from detect (background, card, primary, foreground, muted fg, border).
   If the site has no dark theme, film light (`colorScheme: "light"` in the config) and use the light tokens;
   keep the video's own background near-black either way (see STYLE).
-- `font`: copy the site's own woff2 (from `@fontsource*/files`, the public folder, or download the Google Font) to
-  `public/fonts/brand.woff2`; set `family`.
+- `font`: a **variable** woff2 of the site's font → `public/fonts/brand.woff2`; set `family`. Google Fonts
+  (incl. `next/font/google`): `bash scripts/font.sh "Inter"`. Otherwise copy it from `@fontsource-variable/*/files`
+  or the public folder.
+- Routes with `[locale]`: film under the locale prefix the live site uses (`/en/…`); detect prints a note.
 - `logo`: the square logo mark (favicon.svg is often perfect) → `public/brand/logo.svg`. `tilt` -12 looks good
   for square marks; 0 for round/wordmark-only logos.
 - `name`, `url`.

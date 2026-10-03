@@ -12,7 +12,8 @@ const center: React.CSSProperties = { alignItems: "center", justifyContent: "cen
 export const mid = (r: number[]) => [r[0] + r[2] / 2, r[1] + r[3] / 2] as const;
 const keys = (k: [number, Cam][]) => k.map(([t, c]) => [sec(t), c] as [number, Cam]);
 export const Shade: React.FC<{ o?: number }> = ({ o = 0.6 }) => <AbsoluteFill style={{ background: `radial-gradient(ellipse at center, rgba(5,6,8,${o}) 0%, rgba(5,6,8,${o * 0.5}) 60%, rgba(5,6,8,${o * 0.2}) 100%)` }} />;
-export const BottomShade = () => <AbsoluteFill style={{ background: "linear-gradient(0deg, rgba(5,6,8,.92) 0%, rgba(5,6,8,.55) 32%, transparent 60%)" }} />;
+// strong enough that a caption stays readable over a page's own big headline
+export const BottomShade = () => <AbsoluteFill style={{ background: "linear-gradient(0deg, rgba(5,6,8,.96) 0%, rgba(5,6,8,.82) 30%, rgba(5,6,8,.35) 55%, transparent 72%)" }} />;
 
 /** Logo mark alone, lit out of black. Opens and closes the video (fade via Scene { black }). */
 export const IconReveal: React.FC = () => {
