@@ -39,7 +39,7 @@ The host repo should ignore `video/` (suggest adding it to the host's `.gitignor
 | `src/kit/` | camera Stage, Cursor, Lift, Num, Say, TopTab … (product-agnostic) |
 | `src/recipes/` | ready scenes: IconReveal, LogoReveal, Glide, Spoken, Caption, Tour, Counters, Typing, ChartReveal, LiveLine, Toggle, Toasts, Outro |
 | `src/kit/looks.ts` | the looks (night, studio, editorial, kinetic, terminal): caption placement, labels, camera, transitions, intro, backdrop |
-| `src/project/` | **the only per-project code**: `brand.ts`, `direction.ts`, `script.txt`, `timeline.ts`, `scenes.tsx` (+ generated `rects.json`, `vo.json`) |
+| `src/project/` | **the only per-project code**: `outline.md`, `brand.ts`, `direction.ts`, `script.txt`, `timeline.ts`, `scenes.tsx` (+ generated `rects.json`, `vo.json`) |
 | `src/Promo.tsx` | engine: plays the timeline, ducks music under voice, stems for checks |
 | `scripts/` | detect, direct, capture, pages, font, tts, music, measure, stills, dump-timeline, audit, mixcheck, master, fetch-sfx |
 
@@ -59,8 +59,15 @@ npm run detect          # framework, run command, live URL hints, color tokens (
 If the web app lives in a subfolder (monorepo: `frontend/`, `apps/web/`…), run `node scripts/detect.mjs ../frontend`.
 Then actually learn the product, the way a new teammate would:
 - Read the host `README*`, landing/home page source, i18n strings (they describe features in plain words), docs/about/FAQ pages.
-- List **every user-facing feature**, ranked by what a newcomer cares about. Note the one "hero" feature (the most
-  impressive, interactive one: search, AI, editor, dashboard…) — it goes on the music's biggest drop.
+- Build the **feature inventory** in `src/project/outline.md`: every user-facing feature with its routes (detect lists
+  them; `(app)`, `dashboard`, `account`, `settings` folders are usually signed-in), whether it's public, signed-in or
+  admin, and whether the film **must** show it. The core value decides: if the product *is* its dashboard /
+  editor / workspace (analytics, SaaS, tools), the film must show it signed in — a film of only the public
+  marketing pages is shallow and was rejected. Public detail pages (profiles, items) are must-shows too when the
+  product has them. Admin/internal pages: never, unless asked.
+- Plan **depth**, not just presence: each must-show feature gets its real interactions (open it → switch a tab or
+  filter → the data reacts → drill into a detail page), the way a user would show it to a friend.
+- Pick the one "hero" feature (the most impressive interaction) — it goes on the music's biggest moment.
 - Decide what to film: the **live URL** if the site is deployed (most reliable: real data, real images), otherwise
   run the host's dev server (`npm run dev` etc. from detect) in the background and use `http://localhost:<port>`.
   The kit never cares about the framework (Next, Nuxt, Astro, Vue, React, Svelte, Angular, Laravel, Django …):
@@ -97,7 +104,16 @@ Decide the look as a director (references/DIRECTION.md: audience, hero feature, 
 `src/project/direction.ts` (`direct({ look: "studio", … })` plus any overrides), and pick the story shape and the
 scene list from the product's real features (DIRECTION §3–4). Music mood and SFX set follow the look.
 
-Then one short message to the user: the look and why, the scene outline, and only what you can't decide: **language** (default English for reach), **length** (default: fit the track,
+**Signed-in pages:** if any must-show feature needs an account, ask for a session now, in the same message — never
+film around it and never fetch sessions, tokens or passwords from databases, logs or other users. Ask for the
+user's own (or a demo) account, by cookie, e.g.:
+> Log in at <site> in your browser → DevTools (F12) → Application → Cookies → copy the value of `<cookie name>`
+> (find the name in the host code: grep for `SetCookie` / `cookies().set` / `session`) and send it to me. I'll keep
+> it only in `video/video.config.json` (git-ignored); log out afterwards to end that session.
+Put it in `video.config.json` → `cookies`, and list personal data to blur in `blurSelectors` (emails, API keys,
+billing details, other users' private info). Local dev servers can use a seeded demo user instead.
+
+Then one short message to the user: the look and why, the outline (from `outline.md`), and only what you can't decide: **language** (default English for reach), **length** (default: fit the track,
 60–100 s), and **music**. Offer tracks from `references/MUSIC.md` that fit the look's mood, with links (house artist: Alex_MakeMusic on
 Pixabay). Pixabay blocks server downloads, so the user downloads the MP3 and drops it into
 `video/public/music/track.mp3` (`mkdir -p public/music` if setup hasn't created it). Voice: default `af_heart` (see `references/VOICE.md`); offer samples
@@ -138,7 +154,7 @@ npm run capture                 # → public/pages/*.jpg (+ _soft), src/project/
 ONLY=pricing npm run capture    # re-shoot one page
 ```
 Look at every captured page (make a contact sheet) — cookie banners, chat bubbles, empty lazy sections,
-skeleton loaders. Fix with `hideSelectors` / `hideFixedText` / `waitFor`, re-shoot.
+skeleton loaders, and **"⚠ landed on a login screen"** warnings (the session is missing or expired: ask again). Fix with `hideSelectors` / `hideFixedText` / `waitFor`, re-shoot.
 **For every planned click, check `rects.json` → its `href` opens exactly the page you show next.**
 
 ## 6 · Build the video
@@ -163,7 +179,8 @@ npm run proxy && .venv/bin/python scripts/audit.py out/proxy.mp4        # pace: 
 npm run timeline && for s in music vo sfx; do npx remotion render Promo out/stem_$s.wav --codec=wav --props="{\"stem\":\"$s\"}"; done \
   && .venv/bin/python scripts/mixcheck.py                                  # every line ≥ 10 dB over the bed
 ```
-Plus: stills contact sheet (lifts aligned, no stray overlays, cursor never resting on a control it won't click)
+Plus: **coverage** — every "must show" row of `outline.md` has its scene in the timeline, with the interactions planned
+there; a stills contact sheet (lifts aligned, no stray overlays, cursor never resting on a control it won't click)
 and, after the render, a whisper transcript of the final audio (every line present, in order).
 
 ## 8 · Render and deliver

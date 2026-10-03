@@ -2,6 +2,7 @@
 Pages with "tall": N in video.config.json keep N px (2x) so e.g. a footer far down stays reachable."""
 import glob, json, os
 from PIL import Image, ImageFilter
+Image.MAX_IMAGE_PIXELS = None  # our own screenshots, not untrusted input
 
 MAX_H = 6400  # 3200 CSS px; taller JPGs only cost memory in the renderer
 cfg = json.load(open("video.config.json"))

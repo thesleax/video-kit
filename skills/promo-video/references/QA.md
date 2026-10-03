@@ -2,6 +2,7 @@
 
 | Check | How | Pass |
 |---|---|---|
+| Coverage | `src/project/outline.md` vs the scene list | every must-show feature (incl. signed-in core features and detail pages) has a scene with its interactions |
 | Typecheck | `npm run typecheck` | no errors |
 | Timeline | `npm run timeline` | no "overlap" warnings; speech ends before the outro music ends |
 | Stills | `bash scripts/stills.sh <~30 seconds across the timeline>` → `out/sheet.png` | lifts aligned to the card edges; no cookie banners / skeletons; cursor never resting on a control it won't click; captions = what's being said; nothing cropped by the frame edge or the vignette |

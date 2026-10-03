@@ -7,7 +7,7 @@
 //   "re:<regex>"       innermost elements whose text matches, document order
 //   "<exact text>"     smallest element with exactly that text → its clickable ancestor
 // Page options: path, queries, click (text of a control to press first), waitFor (selector), tall (keep N px).
-// Config options: site, viewport, scale, colorScheme, locale, headers, cookies, localStorage, hideSelectors,
+// Config options: site, viewport, scale, colorScheme, locale, headers, cookies, localStorage, blurSelectors, hideSelectors,
 //   hideFixedText (words: hides fixed/sticky/absolute popovers, banners and promo boxes containing them).
 // Usage: node scripts/capture.mjs            all pages in video.config.json
 //        ONLY=home,pricing node scripts/capture.mjs   re-shoot some (rects.json is merged)
@@ -31,6 +31,8 @@ async function settle(page) {
 }
 
 async function hideOverlays(page) {
+  // personal data on signed-in pages (emails, API keys, addresses…): blurred in the shot, never shown sharp
+  if (CFG.blurSelectors?.length) await page.addStyleTag({ content: `${CFG.blurSelectors.join(",")}{filter:blur(7px)!important}` });
   if (CFG.hideSelectors?.length) await page.addStyleTag({ content: `${CFG.hideSelectors.join(",")}{display:none!important} *{scroll-behavior:auto!important}` });
   // consent dialogs and chat widgets often re-mount after navigation: hide fixed boxes containing these words
   await page.evaluate((words) => {
@@ -88,8 +90,19 @@ for (const job of CFG.pages.filter((p) => !ONLY || ONLY.includes(p.name))) {
   await settle(page);
   await hideOverlays(page);
   out[job.name] = { h: await page.evaluate(() => document.body.scrollHeight), url: page.url() };
-  for (const q of job.queries ?? []) out[job.name][q] = await rectsOf(page, q);
-  await page.screenshot({ path: `public/pages/${job.name}.png`, fullPage: true });
+  // a signed-in page that bounced to a login screen films the wrong thing — say so loudly
+  const gated = /login|signin|sign-in|oauth|auth\b/i.test(new URL(page.url()).pathname + new URL(page.url()).search)
+    || await page.evaluate(() => !!document.querySelector("input[type=password]") || /^(sign|log) ?in/i.test(document.querySelector("h1")?.innerText ?? "")
+      // in-page gates: "Log in to continue", a sign-in dialog, OAuth-only buttons
+      || /(log|sign) ?in to (continue|view|see|access)|continue with (discord|google|github|apple|microsoft)|sign in with (discord|google|github|apple)/i.test(document.body.innerText));
+  if (gated) { out[job.name].needsLogin = true; console.warn(`⚠ ${job.name}: landed on a login screen (${page.url()}) — add a session in "cookies" (see SKILL step 3)`); }
+  for (const q of job.queries ?? []) {
+    // one bad selector shouldn't throw away the whole shoot
+    try { out[job.name][q] = await rectsOf(page, q); } catch (e) { out[job.name][q] = []; console.warn(`⚠ ${job.name}: query ${JSON.stringify(q)} failed — ${e.message.split("\n")[0]}`); }
+  }
+  // full page, but capped: docs pages run to 30 000+ px and nothing below ~3 200 px is ever filmed (raise with "tall")
+  const capH = Math.min(out[job.name].h, (job.tall ? job.tall / 2 : 3200));
+  await page.screenshot({ path: `public/pages/${job.name}.png`, fullPage: true, clip: { x: 0, y: 0, width: (CFG.viewport ?? { width: 1440 }).width, height: capH } });
   console.log(`${job.name.padEnd(18)} ${out[job.name].h}px  ${page.url()}`);
   await page.close();
 }

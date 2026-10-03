@@ -23,6 +23,15 @@ src/kit/looks.ts). Where a rule below names a specific treatment, it is the defa
 - **Intro / ending:** from black and back to black, with the product's mark (lit out of black, or the name typing
   in for wordmark looks); the user asked for this bookend explicitly.
 
+## Coverage and depth
+
+- **The film shows what the product is for.** If its value lives behind a login (dashboards, workspaces, editors),
+  film it signed in with the user's own or a demo account — a film of only the public pages was rejected as shallow.
+  Public detail pages (profiles, item pages) belong in it too when the product has them.
+- **Depth over breadth:** a core feature gets its real interactions (open → switch tab / filter → data reacts →
+  drill into a detail), not a single static frame. Secondary features can be one beat each.
+- Track it in `src/project/outline.md`; the coverage check in QA compares it to the scene list.
+
 ## Interaction honesty (the user calls violations "fake")
 
 - **Every click is real:** its target rect comes from `rects.json`, and the page shown next is exactly what that

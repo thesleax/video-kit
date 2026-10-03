@@ -4,6 +4,8 @@
   "scale": 2,
   "colorScheme": "dark",
   "hideSelectors": ["#cookie-banner", "[class*='cookie']"],
+  "blurSelectors": ["[data-email]", "input[type=email]", "code.api-key"],
+  "cookies": [{ "name": "session", "value": "<the user's own session cookie — never commit>", "domain": "acme.com", "httpOnly": true, "secure": true }],
   "hideFixedText": ["cookie"],
   "pages": [
     { "name": "home", "path": "/", "queries": ["css:header a", "css:nav a", "css:aside a", "css:main a", "css:main button"] },
