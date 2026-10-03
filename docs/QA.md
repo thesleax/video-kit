@@ -4,7 +4,7 @@
 |---|---|---|
 | Typecheck | `npm run typecheck` | no errors |
 | Timeline | `npm run timeline` | no "overlap" warnings; speech ends before the outro music ends |
-| Stills | ~30 `remotion still … --scale=0.4` across the timeline → one contact sheet | lifts aligned to the card edges; no cookie banners / skeletons; cursor never resting on a control it won't click; captions = what's being said; nothing cropped by the frame edge or the vignette |
+| Stills | `bash scripts/stills.sh <~30 seconds across the timeline>` → `out/sheet.png` | lifts aligned to the card edges; no cookie banners / skeletons; cursor never resting on a control it won't click; captions = what's being said; nothing cropped by the frame edge or the vignette |
 | Clicks | for each `Tour` click: `href(page, query, i)` / rects.json `href` | opens exactly the `to` page |
 | Pace | `npm run proxy` → `scripts/audit.py out/proxy.mp4` | every window ≤ 12 px/frame (short 6–8 spikes at page cross-fades are fine) |
 | Mix | stems (`--props='{"stem":"music"}'` etc.) → `scripts/mixcheck.py` | every voice line ≥ 10 dB over music+sfx |

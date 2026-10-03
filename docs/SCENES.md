@@ -38,6 +38,8 @@ charts: ({ dur }) => (
 ```
 - click times = when the voice says the control's name (word times in `vo.json` + the scene's `voAt`).
 - `to` = the captured page for the state that click produces; the switch cross-fades 4 frames after the press.
+- `lifts: [{ r: rect("game", "card:^playing now"), at: 0.9, live: { r: rect("game", NUM, 0), base: 220798 } }]`
+  lifts a card and keeps its number ticking (`NUM = "re:^[0-9]{1,3}(,[0-9]{3})+$"`).
 - `lifts: [{ r: rect("game_about", "card:^second sea$"), at: 0.8, end: 1.1 }]` with
   `soft: [[0.7, 0], [0.9, 0.75], [1.1, 0.75], [1.3, 0]]` focuses on one card.
 - Cursor starts near the first target (or `start`), ends at `rest`. Keep ≥ 0.45 s between a click and the next
@@ -47,6 +49,22 @@ charts: ({ dur }) => (
 Counts a value up when the voice says it (`at`), or ticks it live (no `at`) — `r` is the number's own rect
 (`re:^[0-9]{1,3}(,[0-9]{3})+$` finds formatted numbers). The overlay covers the screenshot's value with the card
 colour, so `brand.colors.card` must match the card behind the number.
+
+## Caption `{ words, at, size?, centered? }`
+The voice line as on-screen words layered over any scene (Tour, Stage) — bottom-left on a dark gradient, or centred.
+
+## ChartReveal `{ page, plot, peak?, peakLabel?, drawFrom?, drawTo, labelAt?, cam, label?, bg? }`
+A chart on the page draws itself, then a dot + label pop on its real peak. Get `plot` / `peak` from
+`.venv/bin/python scripts/measure.py chart <page> <card rect>` (extend `plot` height down to the x-axis so the area
+fill is wiped too). `peakLabel` must state the real value (read it off the page, e.g. the "Record" stat).
+
+## LiveLine `{ page, top, bottom?, at }`
+An illustrative line drawing itself point by point under centred spoken type — for "how it works" lines
+("measured every single minute"). It shows a shape, not data: no numbers on it.
+
+## Toggle `{ r, at, icon?: star|heart|bell|check, label?, bg? }`
+Inside a Tour/Stage: from `at` (the click) the button shows its "on" state (filled icon + label, brand colour).
+Pair with `clicks: [{ at, r }]` on the same rect and with Toasts for the notifications it enables.
 
 ## Typing `{ page, input, button, queries: [{ text, from, to }], focusAt, clickAt, cam }`
 Types into the real input, can replace the text with a second query, clicks the real button at `clickAt` —
@@ -61,21 +79,6 @@ Logo + name, the tagline words as spoken, the URL pill when the URL is said.
 ---
 
 ## Patterns from the reference build (write these inline in `scenes.tsx` when a story needs them)
-
-**Live value on a lifted card** — a card rises and its number keeps ticking:
-```tsx
-<Stage pages={[[0, "game"]]} soft={[[t1, 0], [t1 + 20, 0.85], [t2 - 6, 0.85], [t2 + 14, 0]]} cam={…}>
-  <Lift pg="game" r={rect("game", "card:^playing now")} at={t1} end={t2}>
-    <Num r={rect("game", "re:^[0-9]{1,3}(,[0-9]{3})+$")} text={fmt(live(frame, 220798, 420))} />
-  </Lift>
-</Stage>
-```
-**Chart that draws itself + record marker on the real peak** — measure the plot box and the peak pixel off the
-screenshot (scan the chart line colour with PIL/numpy), cover the plot right of a moving x with the card colour,
-then pop a dot + "Record · N" pill at the measured peak.
-
-**Favourite / toggle** — on the click frame cover the button with the page bg and draw its active state (filled
-icon + "Favorited") in the brand primary; follow with Toasts for the notifications it enables.
 
 **Language switch** — film the footer language list as its own page (`tall` in the config), click the language,
 cross-fade to the captured `/xx` home page.

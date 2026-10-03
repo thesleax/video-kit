@@ -20,10 +20,10 @@ the alternative. Read `docs/STYLE.md` before step 6. The other docs are referenc
 | `setup.sh` | one-time install on a fresh Ubuntu/Debian machine |
 | `video.config.json` | site URL + pages to film (from `video.config.example.json`) |
 | `src/kit/` | camera Stage, Cursor, Lift, Num, Say, TopTab … (product-agnostic, don't fork per project) |
-| `src/recipes/` | ready scenes: IconReveal, LogoReveal, Glide, Spoken, Tour, Counters, Typing, Toasts, Outro |
+| `src/recipes/` | ready scenes: IconReveal, LogoReveal, Glide, Spoken, Caption, Tour, Counters, Typing, ChartReveal, LiveLine, Toggle, Toasts, Outro |
 | `src/project/` | **the only per-project code**: `brand.ts`, `script.txt`, `timeline.ts`, `scenes.tsx` (+ generated `rects.json`, `vo.json`) |
 | `src/Promo.tsx` | engine: plays the timeline, ducks music under voice, stems for checks |
-| `scripts/` | detect, capture, pages, tts, music, dump-timeline, audit, mixcheck, master, fetch-sfx |
+| `scripts/` | detect, capture, pages, tts, music, measure, stills, dump-timeline, audit, mixcheck, master, fetch-sfx |
 | `docs/` | STYLE (rules), SCENES (recipe catalog), VOICE, MUSIC, SOUND, QA |
 
 ## 1 · Setup (once per machine)
@@ -113,8 +113,10 @@ Read `docs/STYLE.md` and `docs/SCENES.md` first. Then:
    `END`, `SFX` (docs/SOUND.md has the placement table). `npm run timeline` warns about overlapping lines.
 2. `src/project/scenes.tsx`: one component per scene id, built from recipes. Rects only via
    `rect(page, query, i)`; caption words only via `words(lineId, bold, from, to)` — never typed by hand.
-3. Preview frames as you go: `npx remotion still Promo out/s.jpg --frame=<n> --scale=0.4` (a contact sheet of
-   ~30 stills across the timeline catches most problems). `npm run studio` also works if you can open a browser.
+3. Measure real data you overlay: `scripts/measure.py chart <page> x y w h` gives a chart's plot box and peak.
+4. Preview as you go: `bash scripts/stills.sh 1.5 4 8 …` renders stills at those seconds into one labelled
+   `out/sheet.png` — look at it after every change; ~30 points across the timeline catch most problems.
+   `npm run studio` also works if you can open a browser.
 
 ## 7 · Check (all four, every time; details in docs/QA.md)
 
@@ -141,6 +143,13 @@ No GPU: ~0.5 s per 1080p60 frame → a 95 s video ≈ 45–60 min. So:
 - check with stills and the quarter-res proxy; render full only when those are clean.
 - never use CSS `filter: blur` / masks on big screenshots (one CPU core composites them — renders crawl);
   use the `_soft` page variants (Stage `soft`) instead.
+
+## What to expect
+
+Following this playbook gives a solid first cut that already respects every rule the reference film was polished
+to. That film still took several rounds of the user's notes — expect one or two here too, and budget render time
+for them. The recipes cover the reference film's scenes; a product with a very different hero interaction
+(an editor, a map, a game canvas) may need one custom scene built from the kit (Stage, Lift, Num, Cursor, At).
 
 ## Iterating with the user
 

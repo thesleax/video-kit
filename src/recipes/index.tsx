@@ -2,7 +2,7 @@
 // from rect(). Each recipe follows docs/STYLE.md: one slow camera move per page, real clicks only, lifts cut
 // out the exact card, every big word on screen is spoken.
 import React from "react";
-import { AbsoluteFill, Easing, useCurrentFrame } from "remotion";
+import { AbsoluteFill, Easing, random, useCurrentFrame } from "remotion";
 import { BRAND } from "../project/brand";
 import { At, C, Card, Cursor, FONT, Lift, LogoMark, Num, Rect, Say, Stage, TopTab, count, fmt, lerp, live, sec, tour } from "../kit";
 
@@ -70,8 +70,10 @@ export type Click = { at: number; r: Rect | number[]; to?: string };
  *  Keep `cam` to 2–3 slow stops that frame every click target; lifts pull exact cards forward. */
 export const Tour: React.FC<{
   dur: number; page: string; cam: [number, Cam][]; clicks?: Click[]; start?: [number, number]; rest?: [number, number];
-  lifts?: { pg?: string; r: Rect | number[]; at: number; end?: number }[]; soft?: [number, number][]; label?: string; children?: React.ReactNode;
+  lifts?: { pg?: string; r: Rect | number[]; at: number; end?: number; live?: { r: Rect | number[]; base: number; amp?: number } }[];
+  soft?: [number, number][]; label?: string; children?: React.ReactNode;
 }> = ({ dur, page, cam, clicks = [], start, rest, lifts = [], soft, label, children }) => {
+  const f = useCurrentFrame();
   const pages: [number, string][] = [[0, page], ...clicks.filter((c) => c.to).map((c) => [sec(c.at) + 4, c.to!] as [number, string])];
   const pageAt = (fr: number) => pages.filter((p) => p[0] <= fr).pop()![1];
   const first = clicks[0] ? mid(clicks[0].r) : [720, 450];
@@ -80,7 +82,11 @@ export const Tour: React.FC<{
   return (
     <AbsoluteFill>
       <Stage pages={pages} cam={keys(cam)} soft={soft?.map(([s, v]) => [sec(s), v])}>
-        {lifts.map((l, i) => <Lift key={i} pg={l.pg ?? pageAt(sec(l.at))} r={l.r} at={sec(l.at)} end={l.end === undefined ? undefined : sec(l.end)} />)}
+        {lifts.map((l, i) => (
+          <Lift key={i} pg={l.pg ?? pageAt(sec(l.at))} r={l.r} at={sec(l.at)} end={l.end === undefined ? undefined : sec(l.end)}>
+            {l.live && <Num r={l.live.r} text={fmt(live(f, l.live.base, l.live.amp ?? Math.max(3, l.live.base * 0.002)))} />}
+          </Lift>
+        ))}
         {children}
         {clicks.length > 0 && <Cursor {...t} />}
       </Stage>
@@ -175,6 +181,94 @@ const LINES = VO_DATA as unknown as Record<string, { dur: number; words: [number
 export const words = (id: string, bold: string[] = [], from = 0, to?: number): Words => {
   const w = LINES[id]?.words;
   if (!w) throw new Error(`vo.json has no line ${id} — run scripts/tts.py`);
-  const b = new Set(bold.map((x) => x.toLowerCase()));
-  return w.slice(from, to).map(([t, s]) => [t, b.has(s.toLowerCase().replace(/[^\p{L}\p{N}']/gu, "")) ? `*${s}*` : s]);
+  const norm = (x: string) => x.toLowerCase().replace(/[^\p{L}\p{N}']/gu, "");
+  const b = new Set(bold.map(norm)); // "minute." and "minute" both match
+  return w.slice(from, to).map(([t, s]) => [t, b.has(norm(s)) ? `*${s}*` : s]);
 };
+
+/** A chart on the page draws itself left→right, then a dot + label pop on its REAL peak.
+ *  plot / peak come from `scripts/measure.py chart <page> x y w h` (CSS px). `bg` = the chart card colour. */
+export const ChartReveal: React.FC<{ dur: number; page: string; plot: number[]; peak?: number[]; peakLabel?: string; drawFrom?: number; drawTo: number; labelAt?: number; cam: [number, Cam][]; label?: string; bg?: string }> = ({ page, plot, peak, peakLabel, drawFrom = 0.1, drawTo, labelAt, cam, label, bg = C.card }) => {
+  const f = useCurrentFrame();
+  const wipe = lerp(f, [sec(drawFrom), sec(drawTo)], [0, 1], Easing.inOut(Easing.cubic));
+  const x = plot[0] + plot[2] * wipe;
+  const rp = labelAt === undefined ? 0 : lerp(f - sec(labelAt), [0, 22], [0, 1], Easing.out(Easing.cubic));
+  return (
+    <AbsoluteFill>
+      <Stage pages={[[0, page]]} cam={keys(cam)}>
+        {wipe < 1 && <At r={[x, plot[1], plot[0] + plot[2] - x + 4, plot[3]]} style={{ background: bg }} />}
+        {wipe > 0 && wipe < 1 && <At r={[x - 1.5, plot[1], 3, plot[3]]} style={{ background: C.primarySoft, boxShadow: `0 0 24px 6px ${C.primary}` }} />}
+        {peak && rp > 0.001 && <>
+          <At r={[peak[0] - 7, peak[1] - 7, 14, 14]} style={{ borderRadius: 99, background: "#fff", opacity: rp, boxShadow: `0 0 0 ${6 * rp}px ${C.primary}59, 0 0 18px ${C.primary}` }} />
+          {peakLabel && <At r={[peak[0] - 110, peak[1] - 58, 220, 38]} style={{ opacity: rp, transform: `translateY(${(1 - rp) * 10}px)` }}>
+            <div style={{ width: "100%", height: "100%", borderRadius: 999, background: C.primary, color: "#fff", fontFamily: FONT, fontWeight: 750, fontSize: "1.05em", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 10px 30px rgba(0,0,0,.5)", whiteSpace: "nowrap" }}>{peakLabel}</div>
+          </At>}
+        </>}
+      </Stage>
+      {label && <TopTab text={label} at={6} />}
+    </AbsoluteFill>
+  );
+};
+
+/** Illustrative live line (data arriving point by point) under spoken type — for "how it works" lines such as
+ *  "measured every minute". It draws a shape, not real numbers: keep any numbers out of its labels. */
+export const LiveLine: React.FC<{ dur: number; page: string; top: Words; bottom?: Words; at: number }> = ({ dur, page, top, bottom, at }) => {
+  const f = useCurrentFrame();
+  const N = 110, shown = Math.min(N, f / 2.4);
+  const pts = Array.from({ length: Math.floor(shown) + 1 }, (_, i) => [i * (1900 / N), 210 + Math.sin(i / 8) * 70 + random(`p${i}`) * 45 - i * 1.0] as const);
+  const line = pts.map(([x, y], i) => `${i ? "L" : "M"}${x},${y}`).join(" ");
+  const last = pts[pts.length - 1];
+  return (
+    <AbsoluteFill>
+      <Stage pages={[[0, page]]} soft={[[0, 1]]} cam={[[0, { fx: 720, fy: 330, z: 1.6 }], [dur, { fx: 760, fy: 360, z: 1.75 }]]} />
+      <Shade o={0.82} />
+      <AbsoluteFill style={{ ...center, perspective: 1600 }}>
+        <svg width="1900" height="420" style={{ overflow: "visible", transform: `translateY(170px) rotateX(${lerp(f, [0, dur], [28, 20])}deg) translateX(${lerp(f, [0, dur], [200, -40], Easing.linear)}px)` }}>
+          <defs><linearGradient id="ll" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={C.primary} stopOpacity=".35" /><stop offset="1" stopColor={C.primary} stopOpacity="0" /></linearGradient></defs>
+          <path d={`${line} L${last[0]},420 L0,420 Z`} fill="url(#ll)" />
+          <path d={line} fill="none" stroke={C.primary} strokeWidth="4" />
+          {pts.filter((_, i) => i % 5 === 0).map(([x, y], i) => <circle key={i} cx={x} cy={y} r="6" fill={C.primarySoft} />)}
+          <circle cx={last[0]} cy={last[1]} r={11 + Math.sin(f / 6) * 2} fill="#fff" style={{ filter: `drop-shadow(0 0 14px ${C.primary})` }} />
+        </svg>
+      </AbsoluteFill>
+      <AbsoluteFill style={{ alignItems: "center", paddingTop: 170, gap: 26 }}>
+        <Say at={sec(at)} size={96} words={top} style={{ justifyContent: "center", maxWidth: 1600 }} />
+        {bottom && <Say at={sec(at)} size={58} style={{ color: C.dim, justifyContent: "center", maxWidth: 1600 }} words={bottom} />}
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+};
+
+const ICONS: Record<string, string> = {
+  star: "M12 2.5l2.9 6 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.2 1.3-6.6L2.5 9.3l6.6-.8z",
+  heart: "M12 20.5s-7.5-4.6-9.3-9.2C1.4 8 3.4 4.5 6.9 4.5c2 0 3.6 1.1 5.1 3 1.5-1.9 3.1-3 5.1-3 3.5 0 5.5 3.5 4.2 6.8-1.8 4.6-9.3 9.2-9.3 9.2z",
+  bell: "M12 3a6 6 0 0 0-6 6v4l-2 3h16l-2-3V9a6 6 0 0 0-6-6zm-2 15a2 2 0 0 0 4 0",
+  check: "M5 12.5l4.5 4.5L19 7.5",
+};
+/** A toggle the cursor clicks turning "on" (favourite, like, follow, subscribe): from `at`, the button area shows
+ *  the filled icon + `label` in the brand colour. Put it inside a Tour/Stage; `bg` = what's behind the button. */
+export const Toggle: React.FC<{ r: Rect | number[]; at: number; icon?: keyof typeof ICONS; label?: string; bg?: string }> = ({ r, at, icon = "star", label, bg = C.bg }) => {
+  const f = useCurrentFrame();
+  if (f < sec(at)) return null;
+  const pop = lerp(f - sec(at), [0, 18], [0, 1], Easing.out(Easing.cubic));
+  const stroke = icon === "check" || icon === "bell";
+  return (
+    <At r={[r[0] + 4, r[1] + 2, r[2] - 8, r[3] - 4]} style={{ background: bg, display: "flex", flexDirection: label ? "column" : "row", alignItems: "center", justifyContent: "center", gap: "8%", fontFamily: FONT }}>
+      <svg viewBox="0 0 24 24" style={{ width: label ? "34%" : "60%", transform: `scale(${0.75 + pop * 0.25})` }}>
+        <path d={ICONS[icon]} fill={stroke ? "none" : C.primary} stroke={C.primary} strokeWidth={stroke ? 2.2 : 1.5} strokeLinejoin="round" strokeLinecap="round" />
+      </svg>
+      {label && <span style={{ color: C.primarySoft, fontSize: "1.3em", fontWeight: 600 }}>{label}</span>}
+    </At>
+  );
+};
+
+/** Spoken words as a caption over any scene (bottom-left on a dark gradient, or centred). Layer it on top of a
+ *  Tour / Stage when the voice line should also read on screen. */
+export const Caption: React.FC<{ words: Words; at: number; size?: number; centered?: boolean }> = ({ words, at, size = 84, centered }) => (
+  <AbsoluteFill style={{ pointerEvents: "none" }}>
+    {centered ? <Shade o={0.7} /> : <BottomShade />}
+    <AbsoluteFill style={centered ? center : { justifyContent: "flex-end", padding: "0 120px 100px" }}>
+      <Say at={sec(at)} size={size} words={words} style={{ maxWidth: 1600, justifyContent: centered ? "center" : undefined }} />
+    </AbsoluteFill>
+  </AbsoluteFill>
+);
