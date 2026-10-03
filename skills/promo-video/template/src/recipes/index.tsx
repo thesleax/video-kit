@@ -4,7 +4,8 @@
 import React from "react";
 import { AbsoluteFill, Easing, random, useCurrentFrame } from "remotion";
 import { BRAND } from "../project/brand";
-import { At, C, Card, Cursor, FONT, Lift, LogoMark, Num, Rect, Say, Stage, TopTab, count, fmt, lerp, live, sec, tour } from "../kit";
+import { At, C, CAPTION_FONT, Card, Cursor, FONT, Label, Lift, LogoMark, Num, Rect, Say, Stage, count, fmt, lerp, live, sec, tour } from "../kit";
+import { DIRECTION as D } from "../project/direction";
 
 export type Cam = { fx?: number; fy?: number; z?: number; rx?: number; ry?: number; rz?: number };
 export type Words = [number, string][];
@@ -15,9 +16,26 @@ export const Shade: React.FC<{ o?: number }> = ({ o = 0.6 }) => <AbsoluteFill st
 // strong enough that a caption stays readable over a page's own big headline
 export const BottomShade = () => <AbsoluteFill style={{ background: "linear-gradient(0deg, rgba(5,6,8,.96) 0%, rgba(5,6,8,.82) 30%, rgba(5,6,8,.35) 55%, transparent 72%)" }} />;
 
-/** Logo mark alone, lit out of black. Opens and closes the video (fade via Scene { black }). */
+/** Opens and closes the video (fade via Scene { black }): the logo mark lit out of black, or — for `intro:
+ *  "wordmark"` looks — the mark with the product name typing in beside it. */
 export const IconReveal: React.FC = () => {
   const f = useCurrentFrame();
+  if (D.intro === "wordmark") {
+    const p = lerp(f - 6, [0, 36], [0, 1], Easing.out(Easing.cubic));
+    const name = BRAND.name;
+    const shown = Math.floor(lerp(f - 22, [0, 34], [0, name.length], Easing.linear));
+    return (
+      <AbsoluteFill style={{ background: "#000", ...center }}>
+        <AbsoluteFill style={{ background: `radial-gradient(circle at 50% 50%, ${C.primary}2e 0%, transparent 50%)`, opacity: p }} />
+        <div style={{ display: "flex", alignItems: "center", gap: 34, opacity: p }}>
+          <LogoMark size={120} p={p} />
+          <div style={{ fontFamily: CAPTION_FONT, fontWeight: 800, fontSize: 112, color: C.fg, letterSpacing: "0.01em", minWidth: 40 }}>
+            {name.slice(0, shown)}<span style={{ display: "inline-block", width: 6, height: 96, marginLeft: 8, verticalAlign: "-8%", background: C.primary, opacity: f % 40 < 24 ? 1 : 0 }} />
+          </div>
+        </div>
+      </AbsoluteFill>
+    );
+  }
   const light = lerp(f, [0, 70], [0, 1], Easing.inOut(Easing.cubic));
   const p = lerp(f - 10, [0, 50], [0, 1], Easing.out(Easing.cubic));
   return (
@@ -55,14 +73,49 @@ export const Glide: React.FC<{ dur: number; page: string; from: Cam; to: Cam; ch
   <Stage pages={[[0, page]]} cam={[[0, from], [dur, to]]}>{children}</Stage>
 );
 
-/** Spoken line as big type over a softened page. `at` = when the voice line starts. */
-export const Spoken: React.FC<{ dur: number; page: string; words: Words; at: number; size?: number; bottom?: boolean; cam?: Cam }> = ({ dur, page, words, at, size = 110, bottom, cam = { fx: 720, fy: 420, z: 1.3 } }) => (
+type Place = "bottom-left" | "center" | "left-column" | "lower-third";
+/** Words placed the way the look places captions (bottom-left, centre, left editorial column, lower-third bar). */
+export const Placed: React.FC<{ words: Words; at: number; place?: Place; size?: number }> = ({ words, at, place = D.caption.position, size }) => {
+  const sz = size ?? (place === "center" ? Math.round(D.caption.size * 1.25) : D.caption.size);
+  if (place === "center") return (
+    <AbsoluteFill style={{ pointerEvents: "none" }}>
+      <Shade o={0.75} />
+      <AbsoluteFill style={center}><Say at={sec(at)} size={sz} words={words} style={{ maxWidth: 1560, justifyContent: "center", textAlign: "center" }} /></AbsoluteFill>
+    </AbsoluteFill>
+  );
+  if (place === "left-column") return (
+    <AbsoluteFill style={{ pointerEvents: "none" }}>
+      <AbsoluteFill style={{ background: "linear-gradient(90deg, rgba(5,6,8,.94) 0%, rgba(5,6,8,.82) 34%, rgba(5,6,8,.3) 52%, transparent 66%)" }} />
+      <AbsoluteFill style={{ justifyContent: "center", padding: "0 0 0 120px" }}><Say at={sec(at)} size={sz} words={words} style={{ maxWidth: 720, lineHeight: 1.12 }} /></AbsoluteFill>
+    </AbsoluteFill>
+  );
+  if (place === "lower-third") return (
+    <AbsoluteFill style={{ pointerEvents: "none" }}>
+      <AbsoluteFill style={{ background: "linear-gradient(0deg, rgba(5,6,8,.94) 0%, rgba(5,6,8,.7) 22%, transparent 42%)" }} />
+      <AbsoluteFill style={{ justifyContent: "flex-end", padding: "0 120px 86px" }}>
+        <div style={{ display: "flex", gap: 26, alignItems: "stretch" }}>
+          <div style={{ width: 6, borderRadius: 3, background: C.primary, boxShadow: `0 0 18px ${C.primary}` }} />
+          <Say at={sec(at)} size={sz} words={words} style={{ maxWidth: 1500 }} />
+        </div>
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+  return (
+    <AbsoluteFill style={{ pointerEvents: "none" }}>
+      <BottomShade />
+      <AbsoluteFill style={{ justifyContent: "flex-end", padding: "0 120px 100px" }}><Say at={sec(at)} size={sz} words={words} style={{ maxWidth: 1600 }} /></AbsoluteFill>
+    </AbsoluteFill>
+  );
+};
+
+/** A spoken line as the scene itself, over a softened page. `bottom` = place it like the look's captions;
+ *  otherwise it's a statement: centred, or in the left column for column looks. */
+export const Spoken: React.FC<{ dur: number; page: string; words: Words; at: number; size?: number; bottom?: boolean; cam?: Cam }> = ({ dur, page, words, at, size, bottom, cam = { fx: 720, fy: 420, z: 1.3 } }) => (
   <AbsoluteFill>
     <Stage pages={[[0, page]]} soft={[[0, 1]]} cam={[[0, cam], [dur, { ...cam, z: (cam.z ?? 1.3) + 0.12 }]]} />
-    {bottom ? <BottomShade /> : <Shade o={0.8} />}
-    <AbsoluteFill style={bottom ? { justifyContent: "flex-end", padding: "0 120px 110px" } : center}>
-      <Say at={sec(at)} size={size} words={words} style={{ maxWidth: 1600, justifyContent: bottom ? undefined : "center" }} />
-    </AbsoluteFill>
+    {/* a statement scene: centred, or a larger line in the left column for column looks */}
+    <Placed words={words} at={at} place={bottom ? D.caption.position : D.caption.position === "left-column" ? "left-column" : "center"}
+      size={size ?? (!bottom && D.caption.position === "left-column" ? Math.round(D.caption.size * 1.45) : undefined)} />
   </AbsoluteFill>
 );
 
@@ -72,8 +125,8 @@ export type Click = { at: number; r: Rect | number[]; to?: string };
 export const Tour: React.FC<{
   dur: number; page: string; cam: [number, Cam][]; clicks?: Click[]; start?: [number, number]; rest?: [number, number];
   lifts?: { pg?: string; r: Rect | number[]; at: number; end?: number; live?: { r: Rect | number[]; base: number; amp?: number } }[];
-  soft?: [number, number][]; label?: string; children?: React.ReactNode;
-}> = ({ dur, page, cam, clicks = [], start, rest, lifts = [], soft, label, children }) => {
+  soft?: [number, number][]; label?: string; n?: number; children?: React.ReactNode;
+}> = ({ dur, page, cam, clicks = [], start, rest, lifts = [], soft, label, n, children }) => {
   const f = useCurrentFrame();
   const pages: [number, string][] = [[0, page], ...clicks.filter((c) => c.to).map((c) => [sec(c.at) + 4, c.to!] as [number, string])];
   const pageAt = (fr: number) => pages.filter((p) => p[0] <= fr).pop()![1];
@@ -91,13 +144,13 @@ export const Tour: React.FC<{
         {children}
         {clicks.length > 0 && <Cursor {...t} />}
       </Stage>
-      {label && <TopTab text={label} at={6} />}
+      {label && <Label text={label} at={6} n={n} />}
     </AbsoluteFill>
   );
 };
 
 /** Values on the page counting up / ticking live (numbers the voice is reading out). */
-export const Counters: React.FC<{ dur: number; page: string; cam: [number, Cam][]; nums: { r: Rect | number[]; to: number; at?: number; dur?: number; live?: number }[]; label?: string }> = ({ dur, page, cam, nums, label }) => {
+export const Counters: React.FC<{ dur: number; page: string; cam: [number, Cam][]; nums: { r: Rect | number[]; to: number; at?: number; dur?: number; live?: number }[]; label?: string; n?: number }> = ({ dur, page, cam, nums, label, n }) => {
   const f = useCurrentFrame();
   return (
     <AbsoluteFill>
@@ -106,7 +159,7 @@ export const Counters: React.FC<{ dur: number; page: string; cam: [number, Cam][
           <Num key={i} r={n.r} text={fmt(n.at === undefined ? live(f, n.to, n.live ?? n.to * 0.0002) : count(f, sec(n.at), sec(n.dur ?? 1.4), n.to))} />
         ))}
       </Stage>
-      {label && <TopTab text={label} at={6} />}
+      {label && <Label text={label} at={6} n={n} />}
     </AbsoluteFill>
   );
 };
@@ -189,7 +242,7 @@ export const words = (id: string, bold: string[] = [], from = 0, to?: number): W
 
 /** A chart on the page draws itself left→right, then a dot + label pop on its REAL peak.
  *  plot / peak come from `scripts/measure.py chart <page> x y w h` (CSS px). `bg` = the chart card colour. */
-export const ChartReveal: React.FC<{ dur: number; page: string; plot: number[]; peak?: number[]; peakLabel?: string; drawFrom?: number; drawTo: number; labelAt?: number; cam: [number, Cam][]; label?: string; bg?: string }> = ({ page, plot, peak, peakLabel, drawFrom = 0.1, drawTo, labelAt, cam, label, bg = C.card }) => {
+export const ChartReveal: React.FC<{ dur: number; page: string; plot: number[]; peak?: number[]; peakLabel?: string; drawFrom?: number; drawTo: number; labelAt?: number; cam: [number, Cam][]; label?: string; n?: number; bg?: string }> = ({ page, plot, peak, peakLabel, drawFrom = 0.1, drawTo, labelAt, cam, label, n, bg = C.card }) => {
   const f = useCurrentFrame();
   const wipe = lerp(f, [sec(drawFrom), sec(drawTo)], [0, 1], Easing.inOut(Easing.cubic));
   const x = plot[0] + plot[2] * wipe;
@@ -206,7 +259,7 @@ export const ChartReveal: React.FC<{ dur: number; page: string; plot: number[]; 
           </At>}
         </>}
       </Stage>
-      {label && <TopTab text={label} at={6} />}
+      {label && <Label text={label} at={6} n={n} />}
     </AbsoluteFill>
   );
 };
@@ -263,13 +316,7 @@ export const Toggle: React.FC<{ r: Rect | number[]; at: number; icon?: keyof typ
   );
 };
 
-/** Spoken words as a caption over any scene (bottom-left on a dark gradient, or centred). Layer it on top of a
- *  Tour / Stage when the voice line should also read on screen. */
-export const Caption: React.FC<{ words: Words; at: number; size?: number; centered?: boolean }> = ({ words, at, size = 84, centered }) => (
-  <AbsoluteFill style={{ pointerEvents: "none" }}>
-    {centered ? <Shade o={0.7} /> : <BottomShade />}
-    <AbsoluteFill style={centered ? center : { justifyContent: "flex-end", padding: "0 120px 100px" }}>
-      <Say at={sec(at)} size={size} words={words} style={{ maxWidth: 1600, justifyContent: centered ? "center" : undefined }} />
-    </AbsoluteFill>
-  </AbsoluteFill>
+/** Spoken words as a caption over any scene, placed per the look (or `centered`). Layer it on a Tour / Stage. */
+export const Caption: React.FC<{ words: Words; at: number; size?: number; centered?: boolean }> = ({ words, at, size, centered }) => (
+  <Placed words={words} at={at} size={size} place={centered ? "center" : undefined} />
 );

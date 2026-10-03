@@ -30,6 +30,22 @@ writes the script, generates the voice-over, analyses the music, films the site,
 and renders the video. It only asks you to download the music file (Pixabay doesn't allow server downloads) and to
 approve the script. First run on a machine installs the toolchain (~8 minutes, `video/setup.sh`).
 
+## Styled for each product
+
+The film's look is chosen per product — not one template for everything. `scripts/direct.py` reads the product
+(its copy, fonts, colours, light/dark pages, audience) and ranks five looks; Claude decides and explains why:
+
+| Look | For | Feel |
+|---|---|---|
+| night | games, communities, creators | bottom-left captions, hanging section tabs, strong 3D camera, energetic electronic |
+| studio | B2B, SaaS, finance, teams | left editorial column, `01 —` chapters, calm camera, push cuts, corporate electronic |
+| editorial | media, blogs, portfolios, serif brands | centred display type, wipes, slow and sparse |
+| kinetic | consumer, social, shops | big centred uppercase words, zoom cuts, playful sounds |
+| terminal | developer tools, APIs | mono lower-third captions, clean fades, tech sounds |
+
+The scene list follows the product's real features too (search → typing into the real input, charts → the real
+chart drawing itself, lists → clicking into the real detail page…).
+
 ## What's inside
 
 | | |

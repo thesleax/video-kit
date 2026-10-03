@@ -6,6 +6,7 @@ import { CameraMotionBlur } from "@remotion/motion-blur";
 import { AbsoluteFill, Easing, Img, continueRender, delayRender, interpolate, staticFile, useCurrentFrame } from "remotion";
 import RECTS from "../project/rects.json";
 import { BRAND } from "../project/brand";
+import { DIRECTION as D } from "../project/direction";
 
 export const FPS = 60;
 export const sec = (s: number) => Math.round(s * FPS);
@@ -25,11 +26,18 @@ export const pageHeight = (page: string) => (RX[page] as unknown as { h: number 
 
 export const C = BRAND.colors;
 export const FONT = `${BRAND.font.family}, system-ui, sans-serif`;
+type FontSpec = { family: string; file: string; weights?: string };
+const EXTRA = BRAND as unknown as { display?: FontSpec; mono?: FontSpec };
+/** Caption font per the look: the product's own, an optional display face (brand.display), or a mono face. */
+export const CAPTION_FONT = D.caption.font === "display" && EXTRA.display ? `${EXTRA.display.family}, ${FONT}`
+  : D.caption.font === "mono" ? `${EXTRA.mono?.family ?? "JetBrains Mono"}, ui-monospace, SFMono-Regular, Menlo, monospace` : FONT;
 
-const fontWait = delayRender("brand font");
 // no format() hint: Google Fonts may hand out TTF data under any extension, the browser sniffs it
-const face = new FontFace(BRAND.font.family, `url(${staticFile(BRAND.font.file)})`, { weight: BRAND.font.weights });
-face.load().then(() => { document.fonts.add(face); continueRender(fontWait); }, () => continueRender(fontWait));
+for (const f of [{ ...BRAND.font }, EXTRA.display, EXTRA.mono].filter(Boolean) as FontSpec[]) {
+  const wait = delayRender(`font ${f.family}`);
+  const face = new FontFace(f.family, `url(${staticFile(f.file)})`, { weight: f.weights ?? "300 900" });
+  face.load().then(() => { document.fonts.add(face); continueRender(wait); }, () => continueRender(wait));
+}
 
 export const out = Easing.bezier(0.16, 1, 0.3, 1);
 export const inout = Easing.bezier(0.65, 0, 0.35, 1);
@@ -39,23 +47,28 @@ const keyed = <K extends string>(f: number, keys: [number, Partial<Record<K, num
   keys.length === 1 ? keys[0][1][k] ?? d
     : interpolate(f, keys.map((x) => x[0]), keys.map((x) => x[1][k] ?? d), { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: inout });
 
-// Near-black like the site; the camera keeps pages filling the frame so little of it shows.
-export const Bg: React.FC = () => (
-  <AbsoluteFill style={{ background: `radial-gradient(ellipse at 50% 45%, #111419 0%, ${C.bg} 60%, #050608 100%)` }} />
-);
+// The site's own background with a faint brand-coloured glow (strength per look); pages fill most of the frame.
+export const Bg: React.FC = () => {
+  const glow = Math.round(D.backdrop.tint * 255).toString(16).padStart(2, "0");
+  const edge = D.theme === "light" ? "#d9dbe0" : "#050608";
+  return <AbsoluteFill style={{ background: `radial-gradient(ellipse 80% 70% at 50% 40%, ${C.primary}${glow} 0%, transparent 60%), radial-gradient(ellipse at 50% 45%, ${C.bg} 0%, ${C.bg} 55%, ${edge} 100%)` }} />;
+};
 
-// Soft blur-dip between scenes; `black` = plain fade through black (intro / ending).
+// Scene hand-over, per the look's `transition`; `black` = plain fade through black (intro / ending).
 export const Scene: React.FC<{ dur: number; children: React.ReactNode; inF?: number; outF?: number; black?: boolean }> = ({ dur, children, inF = 16, outF = 14, black }) => {
   const f = useCurrentFrame();
   const a = lerp(f, [0, inF], [0, 1], Easing.inOut(Easing.quad));
   const b = lerp(f, [dur - outF, dur], [1, 0], Easing.inOut(Easing.quad));
   const v = Math.min(a, b);
   if (black) return <AbsoluteFill style={{ opacity: v }}>{children}</AbsoluteFill>;
-  return (
-    <AbsoluteFill style={{ opacity: v, filter: v < 1 ? `blur(${(1 - v) * 18}px)` : undefined, transform: `scale(${1 + (1 - a) * 0.05 - (1 - b) * 0.03})` }}>
-      {children}
-    </AbsoluteFill>
-  );
+  const t = D.transition;
+  const style: React.CSSProperties =
+    t === "push" ? { opacity: v, transform: `translateX(${(1 - a) * 140 - (1 - b) * 140}px)` }
+    : t === "zoom" ? { opacity: v, transform: `scale(${1.14 - 0.14 * a - (1 - b) * 0.08})`, filter: a < 1 ? `blur(${(1 - a) * 10}px)` : undefined }
+    : t === "wipe" ? { opacity: b, clipPath: a < 1 ? `inset(0 ${(1 - a) * 100}% 0 0)` : undefined }
+    : t === "fade" ? { opacity: v }
+    : { opacity: v, filter: v < 1 ? `blur(${(1 - v) * 18}px)` : undefined, transform: `scale(${1 + (1 - a) * 0.05 - (1 - b) * 0.03})` };
+  return <AbsoluteFill style={style}>{children}</AbsoluteFill>;
 };
 
 // ---- Stage: camera over a page -------------------------------------------------------------
@@ -95,15 +108,15 @@ const StageView: React.FC<StageProps> = ({ pages, cam, soft, children }) => {
   const img: React.CSSProperties = { position: "absolute", left: 0, top: 0, width: W };
   return (
     <AbsoluteFill style={{ perspective: 1900, overflow: "hidden" }}>
-      <AbsoluteFill style={{ transform: `rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg)` }}>
+      <AbsoluteFill style={{ transform: `rotateX(${rx * D.camera.tilt}deg) rotateY(${ry * D.camera.tilt}deg) rotateZ(${rz * D.camera.tilt}deg)` }}>
         <div style={{ position: "absolute", left: 960 - fx * z, top: 540 - fy * z, width: W }}>
           {fade < 1 && <Img src={page(pages[i - 1][1])} style={img} />}
           <Img src={page(pages[i][1])} style={{ ...img, opacity: fade }} />
-          {sv > 0.01 && <Img src={page(pages[i][1], true)} style={{ ...img, opacity: sv }} />}
+          {sv * D.camera.dof > 0.01 && <Img src={page(pages[i][1], true)} style={{ ...img, opacity: Math.min(1, sv * D.camera.dof) }} />}
           <Z.Provider value={z}>{children}</Z.Provider>
         </div>
       </AbsoluteFill>
-      <AbsoluteFill style={{ background: "radial-gradient(ellipse 75% 70% at 50% 50%, transparent 55%, rgba(5,6,8,.85) 100%)", pointerEvents: "none" }} />
+      <AbsoluteFill style={{ background: `radial-gradient(ellipse 75% 70% at 50% 50%, transparent 55%, rgba(5,6,8,${D.backdrop.vignette}) 100%)`, pointerEvents: "none" }} />
     </AbsoluteFill>
   );
 };
@@ -194,15 +207,16 @@ export const Cursor: React.FC<{ path: [number, number, number, boolean?][]; clic
 
 // ---- Type ---------------------------------------------------------------------------------------
 /** Words appear exactly when spoken: [seconds from `at`, word]. *word* = bold accent. */
-export const Say: React.FC<{ words: [number, string][]; at: number; size?: number; style?: React.CSSProperties }> = ({ words, at, size = 92, style }) => {
+export const Say: React.FC<{ words: [number, string][]; at: number; size?: number; style?: React.CSSProperties }> = ({ words, at, size = D.caption.size, style }) => {
   const f = useCurrentFrame();
+  const [regular, accent] = D.caption.weights;
   return (
-    <div style={{ fontFamily: FONT, fontSize: size, color: C.fg, letterSpacing: "-0.02em", lineHeight: 1.1, display: "flex", flexWrap: "wrap", gap: `0 ${size * 0.25}px`, textShadow: "0 4px 40px rgba(0,0,0,.6)", ...style }}>
+    <div style={{ fontFamily: CAPTION_FONT, fontSize: size, color: C.fg, letterSpacing: `${D.caption.tracking ?? -0.02}em`, textTransform: D.caption.upper ? "uppercase" : undefined, lineHeight: D.caption.upper ? 1.0 : 1.1, display: "flex", flexWrap: "wrap", gap: `0 ${size * 0.25}px`, textShadow: "0 4px 40px rgba(0,0,0,.6)", ...style }}>
       {words.map(([t, w], i) => {
         const p = lerp(f - at - sec(t) + 3, [0, 14], [0, 1]);
         const bold = w.startsWith("*");
         return (
-          <span key={i} style={{ display: "inline-block", fontWeight: bold ? 800 : 300, opacity: p, transform: `translateY(${(1 - p) * size * 0.35}px)`, filter: p < 1 ? `blur(${(1 - p) * 12}px)` : undefined }}>
+          <span key={i} style={{ display: "inline-block", fontWeight: bold ? accent : regular, color: bold && D.caption.upper ? C.primarySoft : undefined, opacity: p, transform: `translateY(${(1 - p) * size * 0.35}px)`, filter: p < 1 ? `blur(${(1 - p) * 12}px)` : undefined }}>
             {w.replace(/\*/g, "")}
           </span>
         );
@@ -211,10 +225,29 @@ export const Say: React.FC<{ words: [number, string][]; at: number; size?: numbe
   );
 };
 
-/** Label tab hanging from the top edge of the frame (reference-style section title). */
-export const TopTab: React.FC<{ text: string; at?: number }> = ({ text, at = 0 }) => {
+/** Section name, styled by the look: hanging top tab, "01 — Title" chapter mark, small corner tag, or nothing.
+ *  `n` numbers chapters (pass it from the scene order). */
+export const Label: React.FC<{ text: string; at?: number; n?: number }> = ({ text, at = 0, n }) => {
   const f = useCurrentFrame();
   const p = lerp(f - at, [0, 20], [0, 1]);
+  if (D.label === "none") return null;
+  if (D.label === "chapter") return (
+    <AbsoluteFill style={{ pointerEvents: "none", padding: "84px 0 0 120px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 22, fontFamily: CAPTION_FONT, opacity: p, transform: `translateX(${(1 - p) * -40}px)` }}>
+        {n !== undefined && <span style={{ fontSize: 26, fontWeight: 700, color: C.primarySoft, letterSpacing: "0.12em", fontVariantNumeric: "tabular-nums" }}>{String(n).padStart(2, "0")}</span>}
+        <span style={{ width: 90 * p, height: 2, background: C.primary }} />
+        <span style={{ fontSize: 30, fontWeight: 600, color: C.fg, letterSpacing: "0.02em", textShadow: "0 2px 20px rgba(0,0,0,.7)" }}>{text}</span>
+      </div>
+    </AbsoluteFill>
+  );
+  if (D.label === "corner") return (
+    <AbsoluteFill style={{ pointerEvents: "none", padding: "64px 0 0 96px" }}>
+      <div style={{ display: "inline-flex", alignSelf: "flex-start", alignItems: "center", gap: 12, padding: "10px 18px", borderRadius: 10, background: "rgba(10,11,14,.82)", border: `1px solid ${C.border}`,
+        fontFamily: CAPTION_FONT, fontSize: 22, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: C.dim, opacity: p, transform: `translateY(${(1 - p) * -16}px)` }}>
+        <span style={{ width: 9, height: 9, borderRadius: 9, background: C.primary, boxShadow: `0 0 12px ${C.primary}` }} />{text}
+      </div>
+    </AbsoluteFill>
+  );
   return (
     <AbsoluteFill style={{ alignItems: "center", pointerEvents: "none" }}>
       <div style={{
@@ -225,6 +258,9 @@ export const TopTab: React.FC<{ text: string; at?: number }> = ({ text, at = 0 }
     </AbsoluteFill>
   );
 };
+
+/** @deprecated name kept for older project scenes — same as Label. */
+export const TopTab = Label;
 
 export const fmt = (n: number) => n.toLocaleString("en-US");
 export const count = (f: number, at: number, dur: number, to: number, from = 0) => Math.round(lerp(f - at, [0, dur], [from, to], Easing.out(Easing.cubic)));

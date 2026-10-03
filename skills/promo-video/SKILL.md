@@ -11,9 +11,11 @@ You are making a ~60–100 s, 1080p60 product video of the project in the curren
 gliding over the product's **real** UI, a macOS cursor really using it, a voice-over with word-synced captions,
 licensed music with scenes cut on its beats, and modern UI sound effects. User notes: $ARGUMENTS
 
-The method was proven on real product launches; every rule in `references/STYLE.md` exists because a user rejected
-the alternative. Read it before step 6. The other references are pointed to where they apply:
-[STYLE](references/STYLE.md) · [SCENES](references/SCENES.md) · [VOICE](references/VOICE.md) ·
+**The style is decided per product** (step 3, references/DIRECTION.md): caption placement, section names, camera,
+transitions, intro, music, sound and the scene list all follow from what the product is and who it's for — never
+copy the last film's look. The universal craft rules in `references/STYLE.md` (real clicks, pace, audio balance)
+exist because a user rejected the alternative; read it before step 6. The other references are pointed to where they apply:
+[DIRECTION](references/DIRECTION.md) · [STYLE](references/STYLE.md) · [SCENES](references/SCENES.md) · [VOICE](references/VOICE.md) ·
 [MUSIC](references/MUSIC.md) · [SOUND](references/SOUND.md) · [QA](references/QA.md)
 
 **Never edit the host project.** All work happens in a `video/` folder created next to it. The host is only read
@@ -36,9 +38,10 @@ The host repo should ignore `video/` (suggest adding it to the host's `.gitignor
 | `video.config.json` | site URL + pages to film (from `video.config.example.json`) |
 | `src/kit/` | camera Stage, Cursor, Lift, Num, Say, TopTab … (product-agnostic) |
 | `src/recipes/` | ready scenes: IconReveal, LogoReveal, Glide, Spoken, Caption, Tour, Counters, Typing, ChartReveal, LiveLine, Toggle, Toasts, Outro |
-| `src/project/` | **the only per-project code**: `brand.ts`, `script.txt`, `timeline.ts`, `scenes.tsx` (+ generated `rects.json`, `vo.json`) |
+| `src/kit/looks.ts` | the looks (night, studio, editorial, kinetic, terminal): caption placement, labels, camera, transitions, intro, backdrop |
+| `src/project/` | **the only per-project code**: `brand.ts`, `direction.ts`, `script.txt`, `timeline.ts`, `scenes.tsx` (+ generated `rects.json`, `vo.json`) |
 | `src/Promo.tsx` | engine: plays the timeline, ducks music under voice, stems for checks |
-| `scripts/` | detect, capture, pages, font, tts, music, measure, stills, dump-timeline, audit, mixcheck, master, fetch-sfx |
+| `scripts/` | detect, direct, capture, pages, font, tts, music, measure, stills, dump-timeline, audit, mixcheck, master, fetch-sfx |
 
 ## 1 · Setup (once per machine)
 
@@ -84,19 +87,27 @@ Fill `src/project/brand.ts`:
   for square marks; 0 for round/wordmark-only logos.
 - `name`, `url`.
 
-## 3 · Agree on the basics with the user (one short message)
+## 3 · Direct: choose the film's style, then agree on the basics
 
-Ask only what you can't decide: **language** (default English for reach), **length** (default: fit the track,
-60–100 s), and **music**. Offer the tracks in `references/MUSIC.md` with links (house artist: Alex_MakeMusic on
+Do a first capture of the main pages (step 5's `npm run capture`, can be refined later), then:
+```bash
+.venv/bin/python scripts/direct.py ..      # ranks the looks for THIS product, with reasons
+```
+Decide the look as a director (references/DIRECTION.md: audience, hero feature, the brand's own voice), write
+`src/project/direction.ts` (`direct({ look: "studio", … })` plus any overrides), and pick the story shape and the
+scene list from the product's real features (DIRECTION §3–4). Music mood and SFX set follow the look.
+
+Then one short message to the user: the look and why, the scene outline, and only what you can't decide: **language** (default English for reach), **length** (default: fit the track,
+60–100 s), and **music**. Offer tracks from `references/MUSIC.md` that fit the look's mood, with links (house artist: Alex_MakeMusic on
 Pixabay). Pixabay blocks server downloads, so the user downloads the MP3 and drops it into
 `video/public/music/track.mp3` (`mkdir -p public/music` if setup hasn't created it). Voice: default `af_heart` (see `references/VOICE.md`); offer samples
 (`.venv/bin/python scripts/tts.py voices` after writing line 01) only if they want to choose.
 
 ## 4 · Script and voice
 
-Write `src/project/script.txt` (`id|text` per line) using the structure in `references/VOICE.md`:
-hook question → "Meet NAME." → one line per feature (in tour order) → the question that sets up the hero feature
-→ hero line → extras → "And that's just the beginning." → outro with the URL spelled for speech ("acme dot com").
+Write `src/project/script.txt` (`id|text` per line) following the look's story shape (references/DIRECTION.md §3)
+and the writing rules in `references/VOICE.md`: one line per scene of your outline, the outro with the URL spelled
+for speech ("acme dot com"). A night film is many short punchy lines; a studio film fewer, calmer ones.
 Rules: short sentences, numbers the site really shows (read them off the live page), no claims the product doesn't
 make. Total speech ≈ 65–70 % of the video; the rest is music.
 
@@ -132,7 +143,9 @@ skeleton loaders. Fix with `hideSelectors` / `hideFixedText` / `waitFor`, re-sho
 
 ## 6 · Build the video
 
-Read `references/STYLE.md` and `references/SCENES.md` first. Then:
+Read `references/STYLE.md` and `references/SCENES.md` first. Every recipe reads `direction.ts`, so captions,
+labels, camera tilt, transitions and the intro already follow the look — don't hand-place captions or labels.
+Number section labels in order (`label="…" n={1}`) for chapter looks. Then:
 1. `src/project/timeline.ts`: scenes with start times **on the music's bars/drops** (from analyze), each voice line
    attached to the scene it narrates (`vo`, `voAt` offset), `EXTRA_VO` for "Meet NAME." landing on the logo hit,
    `END`, `SFX` (references/SOUND.md has the placement table). `npm run timeline` warns about overlapping lines.

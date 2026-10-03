@@ -8,8 +8,15 @@ centre, `z` the zoom (1 = page width 1440 px fills 1440 px of the 1920 frame).
 Framing math: at zoom `z` the frame shows `1920/z × 1080/z` CSS px around `(fx, fy)`. Choose `z` so every
 click target of the scene is inside, with margin — then the camera only needs to drift.
 
+All recipes read `src/project/direction.ts` (the look): caption placement and type, `Label` style (tab / chapter /
+corner / none), camera tilt and depth of field, scene transitions and the intro come from there, so the same scene
+code fits any look. Pass `n` with `label` for numbered chapters.
+
+## Placed `{ words, at, place?, size? }` / Label `{ text, at?, n? }`
+Lower-level pieces the recipes use: words positioned per the look (or a forced `place`), and the section name.
+
 ## IconReveal
-Logo mark lit out of black. Scenes `intro` and `end` with `{ black: true }` fades.
+Opening / closing card from black: the mark lit out of black, or the name typing in (`intro: "wordmark"` looks).
 
 ## LogoReveal `{ page? }`
 Logo + name over the softened home page; place it on the first big hit, with "Meet NAME." in `EXTRA_VO`

@@ -1,14 +1,16 @@
-# STYLE — the rules (each one is here because the user asked for it or rejected the alternative)
+# STYLE — the craft rules (each one is here because a user asked for it or rejected the alternative)
 
-Reference look: high-end SaaS launch films (After Effects style) — the product's real UI in close-up, slightly
-tilted in 3D, depth of field, a cursor using it, short section tabs, bold-light mixed captions, music-driven cuts.
+These hold for every film. What changes per product — caption placement and type, section names, tilt amount,
+transition kind, intro, backdrop tint, music, sound set — is the **look** (references/DIRECTION.md,
+src/kit/looks.ts). Where a rule below names a specific treatment, it is the default of the `night` look.
 
 ## Picture
 
 - **Close camera, real UI.** Pages fill the frame (zoom 1.2–2.0). The video background barely shows; when it does
-  it is near-black neutral (the site's own background), never a coloured gradient. A blue radial "glow
-  background" was rejected as unprofessional.
-- **3D tilt is subtle:** rx 5–9°, ry −6…+8°, rz 0. Tilt changes slowly over a whole scene; quick tilt changes read as wobble.
+  it is the site's own background with at most the look's faint brand glow. A strong coloured gradient
+  background was rejected as unprofessional.
+- **3D tilt is subtle:** scenes are written with rx 5–9°, ry −6…+8°, rz 0, and the look scales them (studio and
+  editorial almost flat). Tilt changes slowly over a whole scene; quick tilt changes read as wobble.
 - **One slow camera move per page.** Frame all click targets of a scene in one view and drift. Big jumps
   (header → card → chart within 2 s) were the #1 complaint ("too fast"). Budget: **≤ 12 px/frame** at 1080p60
   everywhere (`scripts/audit.py`). The Stage already averages the path over ±0.25 s and never across a page switch.
@@ -18,8 +20,8 @@ tilted in 3D, depth of field, a cursor using it, short section tabs, bold-light 
 - **No whip montages / flash cuts** of screenshots without interaction. Two fast "montage" sections were removed
   for being fast, repetitive and unexplained. Music-only stretches get a calm glide or a feature the voice
   introduced; everything shown should be either narrated or used by the cursor.
-- **Intro / ending:** the logo mark alone, lit out of black (IconReveal), fade to black, the film fades in from
-  black; at the end the mark returns animated and the film fades to black.
+- **Intro / ending:** from black and back to black, with the product's mark (lit out of black, or the name typing
+  in for wordmark looks); the user asked for this bookend explicitly.
 
 ## Interaction honesty (the user calls violations "fake")
 
@@ -52,13 +54,13 @@ tilted in 3D, depth of field, a cursor using it, short section tabs, bold-light 
 - Captions are the voice line's own words appearing **as they are spoken** (`words()` from vo.json). Big text on
   screen that the voice doesn't say was called out ("text with no sound"). Section tabs (TopTab) name what the
   voice is presenting, 1–4 words.
-- Caption style: light weight with the key words bold (`*word*`), 84–120 px, bottom-left over a dark gradient or
-  centred over a softened page. Font = the product's own.
+- Caption placement and type come from the look and never vary inside one film; accent words (`*word*`) are the
+  ones that carry the sentence. Font = the product's own (or the look's display / mono face).
 - Don't stack a caption on top of the page's own large headline (landing heroes): frame the camera so the
   headline sits above the caption band, use a TopTab instead, or let the page's headline be the text.
 - The caption font must be a **variable** font (300–900) or the light/bold mix collapses into all-bold:
   `bash scripts/font.sh "<Google family>"`, or copy the site's own variable woff2.
-- TopTab: hangs from the top edge, dark glass, rounded bottom corners.
+- Section names (`Label`): tab, chapter number, corner tag or none — per the look; 1–4 words naming what's shown.
 
 ## Sound
 

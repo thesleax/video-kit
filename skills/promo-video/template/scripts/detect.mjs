@@ -6,7 +6,13 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
-const ROOT = process.argv[2] ?? "..";
+import { existsSync as exists0 } from "node:fs";
+let ROOT = process.argv[2] ?? "..";
+// monorepos: the web app usually sits one level down
+if (!exists0(join(ROOT, "package.json"))) {
+  const sub = ["frontend", "web", "client", "app", "site", "apps/web", "apps/site", "apps/frontend", "packages/web"].find((d) => exists0(join(ROOT, d, "package.json")));
+  if (sub) { console.error(`(web app found in ${sub}/)`); ROOT = join(ROOT, sub); }
+}
 const SKIP = new Set(["node_modules", ".git", ".next", ".nuxt", ".output", "dist", "build", ".astro", ".svelte-kit", "vendor", "video", "coverage", ".turbo", ".vercel"]);
 const read = (p) => { try { return readFileSync(join(ROOT, p), "utf8"); } catch { return ""; } };
 const walk = (dir, out = [], depth = 0) => {
@@ -36,7 +42,7 @@ const scripts = pkg?.scripts ?? {};
 const devCmd = scripts.dev ? "npm run dev" : scripts.start ? "npm start" : other?.[1];
 
 // ---- public URL hints, ranked: site config / metadata / sitemap code beat READMEs; template boilerplate is ignored
-const BOILER = /(^|\.)(nextjs\.org|vercel\.(com|app)|example\.(com|org)|github\.com|githubusercontent\.com|npmjs\.(com|org)|schema\.org|w3\.org|x\.com|twitter\.com|google(apis)?\.com|gstatic\.com|nuxt\.com|astro\.build|vitejs\.dev|svelte\.dev|react\.dev|tailwindcss\.com|shields\.io|cloudflare\.com|stripe\.com|discord\.(gg|com)|youtube\.com|facebook\.com|instagram\.com|linkedin\.com|mozilla\.org|wikipedia\.org|localhost)$/i;
+const BOILER = /(^|\.)(alanadi\.com|yourdomain\.com|domain\.com|mysite\.com|acme\.com|nextjs\.org|vercel\.(com|app)|example\.(com|org)|github\.com|githubusercontent\.com|npmjs\.(com|org)|schema\.org|w3\.org|x\.com|twitter\.com|google(apis)?\.com|gstatic\.com|nuxt\.com|astro\.build|vitejs\.dev|svelte\.dev|react\.dev|tailwindcss\.com|shields\.io|cloudflare\.com|stripe\.com|discord\.(gg|com)|youtube\.com|facebook\.com|instagram\.com|linkedin\.com|mozilla\.org|wikipedia\.org|localhost)$/i;
 const score = new Map();
 const hint = (u, w) => {
   try { const h = new URL(u).hostname.replace(/^www\./, ""); if (!BOILER.test(h) && /\.[a-z]{2,}$/i.test(h)) score.set(h, (score.get(h) ?? 0) + w); } catch {}
