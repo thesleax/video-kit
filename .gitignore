@@ -1,0 +1,13 @@
+node_modules/
+.venv/
+out/
+public/pages/
+public/vo/
+public/music/
+public/sfx/
+public/fonts/
+public/brand/
+public/timeline.json
+*.log
+.venv
+video.config.json

@@ -1,0 +1,16 @@
+{
+  "site": "http://localhost:3000",
+  "viewport": { "width": 1440, "height": 900 },
+  "scale": 2,
+  "colorScheme": "dark",
+  "hideSelectors": ["#cookie-banner", "[class*='cookie']"],
+  "hideFixedText": ["cookie"],
+  "pages": [
+    { "name": "home", "path": "/", "queries": ["css:header a", "css:nav a", "css:aside a", "css:main a", "css:main button"] },
+    { "name": "pricing", "path": "/pricing", "queries": ["css:main a", "card:^pro$"] },
+    { "name": "dashboard_tab2", "path": "/dashboard", "click": "Analytics", "queries": ["css:[role=tab]"] },
+    { "name": "search_results", "path": "/search?q=example", "queries": ["css:main input", "css:tbody tr"] },
+    { "name": "footer", "path": "/", "tall": 9400, "queries": ["css:footer a"] }
+  ],
+  "tts": { "voice": "af_heart", "speed": 1.07, "lang": "en-us" }
+}

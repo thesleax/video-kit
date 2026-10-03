@@ -1,0 +1,29 @@
+{
+  "name": "video-kit",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "detect": "node scripts/detect.mjs ..",
+    "capture": "node scripts/capture.mjs && .venv/bin/python scripts/pages.py",
+    "timeline": "tsx scripts/dump-timeline.ts",
+    "studio": "remotion studio",
+    "still": "remotion still Promo",
+    "proxy": "remotion render Promo out/proxy.mp4 --scale=0.25 --every-nth-frame=2 --muted",
+    "render": "remotion render Promo out/raw.mp4",
+    "master": "bash scripts/master.sh out/raw.mp4 out/final.mp4",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.532",
+    "@remotion/motion-blur": "^4.0.532",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "remotion": "^4.0.532"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "playwright": "^1.63.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
