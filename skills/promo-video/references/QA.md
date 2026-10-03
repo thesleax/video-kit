@@ -2,6 +2,7 @@
 
 | Check | How | Pass |
 |---|---|---|
+| Doctor | `.venv/bin/python scripts/doctor.py` | 0 errors; every warning looked at |
 | Coverage | `src/project/outline.md` vs the scene list | every must-show feature (incl. signed-in core features and detail pages) has a scene with its interactions |
 | Typecheck | `npm run typecheck` | no errors |
 | Timeline | `npm run timeline` | no "overlap" warnings; speech ends before the outro music ends |

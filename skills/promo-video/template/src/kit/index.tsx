@@ -75,6 +75,17 @@ export const Scene: React.FC<{ dur: number; children: React.ReactNode; inF?: num
 type Cam = { fx: number; fy: number; z: number; rx: number; ry: number; rz: number };
 const Z = createContext(1);
 export const useZ = () => useContext(Z);
+// camera centre + zoom, so QA stills can flag a lift / click the camera isn't looking at
+const View = createContext({ fx: 720, fy: 450, z: 1.3 });
+declare const process: { env: Record<string, string | undefined> };
+const QA = process.env.REMOTION_QA === "1"; // set by scripts/stills.sh, never in the final render
+export const OffScreen: React.FC<{ r: Rect | number[]; what: string }> = ({ r, what }) => {
+  const { fx, fy, z } = useContext(View);
+  const x = 960 + (r[0] + r[2] / 2 - fx) * z, y = 540 + (r[1] + r[3] / 2 - fy) * z;
+  if (!QA || (x > 60 && x < 1860 && y > 40 && y < 1040)) return null;
+  return <div style={{ position: "absolute", left: fx * z - 900, top: fy * z - 500, padding: "10px 18px", background: "#e00", color: "#fff", font: "700 40px sans-serif", zIndex: 99 }}>
+    {what} OFF-SCREEN at {r.slice(0, 4).join(",")}</div>;
+};
 const page = (n: string, soft = false) => staticFile(`pages/${n}${soft ? "_soft" : ""}.jpg`);
 
 type StageProps = { pages: [number, string][]; cam: [number, Partial<Cam>][]; soft?: [number, number][]; children?: React.ReactNode };
@@ -113,7 +124,7 @@ const StageView: React.FC<StageProps> = ({ pages, cam, soft, children }) => {
           {fade < 1 && <Img src={page(pages[i - 1][1])} style={img} />}
           <Img src={page(pages[i][1])} style={{ ...img, opacity: fade }} />
           {sv * D.camera.dof > 0.01 && <Img src={page(pages[i][1], true)} style={{ ...img, opacity: Math.min(1, sv * D.camera.dof) }} />}
-          <Z.Provider value={z}>{children}</Z.Provider>
+          <View.Provider value={{ fx, fy, z }}><Z.Provider value={z}>{children}</Z.Provider></View.Provider>
         </div>
       </AbsoluteFill>
       <AbsoluteFill style={{ background: `radial-gradient(ellipse 75% 70% at 50% 50%, transparent 55%, rgba(5,6,8,${D.backdrop.vignette}) 100%)`, pointerEvents: "none" }} />
@@ -133,8 +144,10 @@ export const Lift: React.FC<{ pg: string; r: Rect | number[]; at: number; end?: 
   const z = useZ();
   const p = Math.min(lerp(f - at, [0, 30], [0, 1], Easing.out(Easing.cubic)), lerp(f - end, [0, 20], [1, 0], Easing.inOut(Easing.cubic)));
   if (p < 0.001) return null;
-
-  return (
+  if (f < at + 30) return <><OffScreen r={r} what="LIFT" />{liftBox(pg, r, p, z, pop, children)}</>;
+  return liftBox(pg, r, p, z, pop, children);
+};
+const liftBox = (pg: string, r: Rect | number[], p: number, z: number, pop: number, children?: React.ReactNode) => (
     <At r={r} style={{
       backgroundImage: `url(${page(pg)})`, backgroundSize: `${1440 * z}px auto`, backgroundPosition: `${-r[0] * z}px ${-r[1] * z}px`,
       borderRadius: 12 * z, opacity: Math.min(1, p * 3), transform: `translateY(${-p * 8 * z}px) scale(${1 + (pop - 1) * p})`,
@@ -143,8 +156,7 @@ export const Lift: React.FC<{ pg: string; r: Rect | number[]; at: number; end?: 
       {/* children keep page coordinates while riding along with the lift */}
       {children && <div style={{ position: "absolute", left: -r[0] * z, top: -r[1] * z }}>{children}</div>}
     </At>
-  );
-};
+);
 
 /** Covers a value on the screenshot and draws it live (counting or ticking). */
 export const Num: React.FC<{ r: Rect | number[]; text: string; size?: number; weight?: number; bg?: string; color?: string }> = ({ r, text, size, weight = 700, bg = C.card, color = C.fg }) => {

@@ -4,9 +4,11 @@
 import React from "react";
 import { AbsoluteFill, Easing, random, useCurrentFrame } from "remotion";
 import { BRAND } from "../project/brand";
-import { At, C, CAPTION_FONT, Card, Cursor, FONT, Label, Lift, LogoMark, Num, Rect, Say, Stage, count, fmt, lerp, live, sec, tour } from "../kit";
+import { At, C, CAPTION_FONT, Card, Cursor, FONT, Label, Lift, LogoMark, Num, OffScreen, Rect, Say, Stage, count, fmt, lerp, live, sec, tour } from "../kit";
 import { DIRECTION as D } from "../project/direction";
 
+/** Show this scene's voice line on screen too: `{ id, at, bold?, from?, to? }` (at = when the line starts). */
+export type SayOn = { id: string; at: number; bold?: string[]; from?: number; to?: number };
 export type Cam = { fx?: number; fy?: number; z?: number; rx?: number; ry?: number; rz?: number };
 export type Words = [number, string][];
 const center: React.CSSProperties = { alignItems: "center", justifyContent: "center" };
@@ -125,8 +127,8 @@ export type Click = { at: number; r: Rect | number[]; to?: string };
 export const Tour: React.FC<{
   dur: number; page: string; cam: [number, Cam][]; clicks?: Click[]; start?: [number, number]; rest?: [number, number];
   lifts?: { pg?: string; r: Rect | number[]; at: number; end?: number; live?: { r: Rect | number[]; base: number; amp?: number } }[];
-  soft?: [number, number][]; label?: string; n?: number; children?: React.ReactNode;
-}> = ({ dur, page, cam, clicks = [], start, rest, lifts = [], soft, label, n, children }) => {
+  soft?: [number, number][]; label?: string; n?: number; say?: SayOn; children?: React.ReactNode;
+}> = ({ dur, page, cam, clicks = [], start, rest, lifts = [], soft, label, n, say, children }) => {
   const f = useCurrentFrame();
   const pages: [number, string][] = [[0, page], ...clicks.filter((c) => c.to).map((c) => [sec(c.at) + 4, c.to!] as [number, string])];
   const pageAt = (fr: number) => pages.filter((p) => p[0] <= fr).pop()![1];
@@ -142,15 +144,17 @@ export const Tour: React.FC<{
           </Lift>
         ))}
         {children}
+        {clicks.map((c, i) => f >= sec(c.at) - 20 && f < sec(c.at) + 4 && <OffScreen key={i} r={c.r} what="CLICK" />)}
         {clicks.length > 0 && <Cursor {...t} />}
       </Stage>
+      {say && <Caption at={say.at} words={words(say.id, say.bold, say.from, say.to)} />}
       {label && <Label text={label} at={6} n={n} />}
     </AbsoluteFill>
   );
 };
 
 /** Values on the page counting up / ticking live (numbers the voice is reading out). */
-export const Counters: React.FC<{ dur: number; page: string; cam: [number, Cam][]; nums: { r: Rect | number[]; to: number; at?: number; dur?: number; live?: number }[]; label?: string; n?: number }> = ({ dur, page, cam, nums, label, n }) => {
+export const Counters: React.FC<{ dur: number; page: string; cam: [number, Cam][]; nums: { r: Rect | number[]; to: number; at?: number; dur?: number; live?: number }[]; label?: string; n?: number; say?: SayOn }> = ({ dur, page, cam, nums, label, n, say }) => {
   const f = useCurrentFrame();
   return (
     <AbsoluteFill>
@@ -159,6 +163,7 @@ export const Counters: React.FC<{ dur: number; page: string; cam: [number, Cam][
           <Num key={i} r={n.r} text={fmt(n.at === undefined ? live(f, n.to, n.live ?? n.to * 0.0002) : count(f, sec(n.at), sec(n.dur ?? 1.4), n.to))} />
         ))}
       </Stage>
+      {say && <Caption at={say.at} words={words(say.id, say.bold, say.from, say.to)} />}
       {label && <Label text={label} at={6} n={n} />}
     </AbsoluteFill>
   );
@@ -242,7 +247,7 @@ export const words = (id: string, bold: string[] = [], from = 0, to?: number): W
 
 /** A chart on the page draws itself left→right, then a dot + label pop on its REAL peak.
  *  plot / peak come from `scripts/measure.py chart <page> x y w h` (CSS px). `bg` = the chart card colour. */
-export const ChartReveal: React.FC<{ dur: number; page: string; plot: number[]; peak?: number[]; peakLabel?: string; drawFrom?: number; drawTo: number; labelAt?: number; cam: [number, Cam][]; label?: string; n?: number; bg?: string }> = ({ page, plot, peak, peakLabel, drawFrom = 0.1, drawTo, labelAt, cam, label, n, bg = C.card }) => {
+export const ChartReveal: React.FC<{ dur: number; page: string; plot: number[]; peak?: number[]; peakLabel?: string; drawFrom?: number; drawTo: number; labelAt?: number; cam: [number, Cam][]; label?: string; n?: number; say?: SayOn; bg?: string }> = ({ page, plot, peak, peakLabel, drawFrom = 0.1, drawTo, labelAt, cam, label, n, say, bg = C.card }) => {
   const f = useCurrentFrame();
   const wipe = lerp(f, [sec(drawFrom), sec(drawTo)], [0, 1], Easing.inOut(Easing.cubic));
   const x = plot[0] + plot[2] * wipe;
@@ -259,6 +264,7 @@ export const ChartReveal: React.FC<{ dur: number; page: string; plot: number[]; 
           </At>}
         </>}
       </Stage>
+      {say && <Caption at={say.at} words={words(say.id, say.bold, say.from, say.to)} />}
       {label && <Label text={label} at={6} n={n} />}
     </AbsoluteFill>
   );

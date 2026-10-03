@@ -41,7 +41,7 @@ The host repo should ignore `video/` (suggest adding it to the host's `.gitignor
 | `src/kit/looks.ts` | the looks (night, studio, editorial, kinetic, terminal): caption placement, labels, camera, transitions, intro, backdrop |
 | `src/project/` | **the only per-project code**: `outline.md`, `brand.ts`, `direction.ts`, `script.txt`, `timeline.ts`, `scenes.tsx` (+ generated `rects.json`, `vo.json`) |
 | `src/Promo.tsx` | engine: plays the timeline, ducks music under voice, stems for checks |
-| `scripts/` | detect, direct, capture, pages, font, tts, music, measure, stills, dump-timeline, audit, mixcheck, master, fetch-sfx |
+| `scripts/` | detect, direct, capture, pages, font, tts, music, measure, stills, **doctor**, dump-timeline, audit, mixcheck, master, fetch-sfx |
 
 ## 1 · Setup (once per machine)
 
@@ -161,7 +161,9 @@ skeleton loaders, and **"⚠ landed on a login screen"** warnings (the session i
 
 Read `references/STYLE.md` and `references/SCENES.md` first. Every recipe reads `direction.ts`, so captions,
 labels, camera tilt, transitions and the intro already follow the look — don't hand-place captions or labels.
-Number section labels in order (`label="…" n={1}`) for chapter looks. Then:
+Number section labels in order (`label="…" n={1}`) for chapter looks. Give the lines that carry the pitch an on-screen
+caption (`say={{ id: "05", at: 0.2, bold: ["live"] }}` on Tour / Counters / ChartReveal) — references/STYLE.md
+"Caption density". Then:
 1. `src/project/timeline.ts`: scenes with start times **on the music's bars/drops** (from analyze), each voice line
    attached to the scene it narrates (`vo`, `voAt` offset), `EXTRA_VO` for "Meet NAME." landing on the logo hit,
    `END`, `SFX` (references/SOUND.md has the placement table). `npm run timeline` warns about overlapping lines.
@@ -172,9 +174,12 @@ Number section labels in order (`label="…" n={1}`) for chapter looks. Then:
    `out/sheet.png` — look at it after every change; ~30 points across the timeline catch most problems.
    `npm run studio` also works if you can open a browser.
 
-## 7 · Check (all four, every time; details in references/QA.md)
+## 7 · Check (every time; details in references/QA.md)
 
 ```bash
+.venv/bin/python scripts/doctor.py   # first: every problem past films hit — login bounces, unrolled scrollers, title-bar
+                                     # cards, cards matching the sidebar, fake clicks (href ≠ next page), static fonts,
+                                     # unvoiced / changed lines, overlaps, short music, missing SFX, privacy reminders
 npm run proxy && .venv/bin/python scripts/audit.py out/proxy.mp4        # pace: every window ≤ 12 px/frame
 npm run timeline && for s in music vo sfx; do npx remotion render Promo out/stem_$s.wav --codec=wav --props="{\"stem\":\"$s\"}"; done \
   && .venv/bin/python scripts/mixcheck.py                                  # every line ≥ 10 dB over the bed
@@ -205,6 +210,12 @@ Following this skill gives a solid first cut that already respects every rule th
 to. That film still took several rounds of the user's notes — expect one or two here too, and budget render time
 for them. The recipes cover the reference film's scenes; a product with a very different hero interaction
 (an editor, a map, a game canvas) may need one custom scene built from the kit (Stage, Lift, Num, Cursor, At).
+
+## When something goes wrong
+
+Every problem a film has hit is either handled by the tools or caught by `scripts/doctor.py`. When you hit a new one,
+fix its cause in the kit (capture, a recipe, a check) rather than working around it in this one project, and add a
+doctor check so the next film catches it automatically — then tell the user what you changed.
 
 ## Iterating with the user
 

@@ -61,7 +61,11 @@ src/kit/looks.ts). Where a rule below names a specific treatment, it is the defa
 ## Type
 
 - Captions are the voice line's own words appearing **as they are spoken** (`words()` from vo.json). Big text on
-  screen that the voice doesn't say was called out ("text with no sound"). Section tabs (TopTab) name what the
+  screen that the voice doesn't say was called out ("text with no sound").
+- **Caption density:** put the line on screen (`say` on Tour / Counters / ChartReveal, `Spoken`, `Caption`) when it
+  carries the pitch — the hook, the core value, every number, the hero moment, the close — roughly 50–70 % of the
+  lines. Lines that only narrate navigation ("click into the leaderboard") rely on the section label. A film with
+  captions on only 3–4 lines read as too bare; captions on every single line read as a lyric video. Section tabs (TopTab) name what the
   voice is presenting, 1–4 words.
 - Caption placement and type come from the look and never vary inside one film; accent words (`*word*`) are the
   ones that carry the sentence. Font = the product's own (or the look's display / mono face).

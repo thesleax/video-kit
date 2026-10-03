@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Render stills at the given seconds and tile them into one labelled contact sheet: out/sheet.png
+# QA mode: a red "LIFT / CLICK OFF-SCREEN" badge marks a target the camera isn't framing (wrong rect or wrong cam).
 #   bash scripts/stills.sh 1.5 4 8 12.3 ...
 set -euo pipefail
 mkdir -p out/stills
 for t in "$@"; do
-  npx remotion still Promo "out/stills/$t.jpg" --frame="$(python3 -c "print(round($t*60))")" --scale=0.4 --log=error
+  REMOTION_QA=1 npx remotion still Promo "out/stills/$t.jpg" --frame="$(python3 -c "print(round($t*60))")" --scale=0.4 --log=error
 done
 .venv/bin/python - "$@" <<'PY'
 import sys

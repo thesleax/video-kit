@@ -6,8 +6,9 @@
 //   "card:<regex>"     the bordered/filled card around the shortest element whose text matches (case-insensitive)
 //   "re:<regex>"       innermost elements whose text matches, document order
 //   "<exact text>"     smallest element with exactly that text → its clickable ancestor
-// Page options: path, queries, click (text of a control to press first), waitFor (selector), tall (keep N px).
-// Config options: site, viewport, scale, colorScheme, locale, headers, cookies, localStorage, blurSelectors, hideSelectors,
+// Page options: path, queries, click (text of a control to press first), waitFor (selector), tall (keep N px),
+//   blurSelectors / blurText / blurCards (per page, on top of the global ones).
+// Config options: site, viewport, scale, colorScheme, locale, headers, cookies, localStorage, blurSelectors, blurText, hideSelectors,
 //   hideFixedText (words: hides fixed/sticky/absolute popovers, banners and promo boxes containing them).
 // Usage: node scripts/capture.mjs            all pages in video.config.json
 //        ONLY=home,pricing node scripts/capture.mjs   re-shoot some (rects.json is merged)
@@ -18,6 +19,26 @@ const CFG = JSON.parse(readFileSync("video.config.json", "utf8"));
 const BASE = process.env.SITE ?? CFG.site;
 const ONLY = process.env.ONLY?.split(",");
 const RECTS = "src/project/rects.json";
+
+// App shells (dashboards) scroll inside a full-height panel, so a "full page" shot is one screen tall.
+// Unroll every large inner scroller and the fixed-height ancestors around it so the whole content is on the page.
+async function unrollScrollers(page) {
+  await page.evaluate(() => {
+    const big = [...document.querySelectorAll("body *")].filter((e) => {
+      const c = getComputedStyle(e);
+      return /(auto|scroll)/.test(c.overflowY) && e.scrollHeight > e.clientHeight + 40 && e.clientHeight > 300 && e.clientWidth > innerWidth * 0.4;
+    });
+    // the scroller and EVERY ancestor up to <html>: smooth-scroll libraries (Lenis, Locomotive) and h-screen
+    // layouts lock heights and overflow at several levels
+    for (const e of big) {
+      for (let x = e; x; x = x.parentElement) {
+        x.style.setProperty("overflow", "visible", "important");
+        x.style.setProperty("height", "auto", "important");
+        x.style.setProperty("max-height", "none", "important");
+      }
+    }
+  });
+}
 
 async function settle(page) {
   // lazy images and sections load only once scrolled into view
@@ -30,9 +51,33 @@ async function settle(page) {
   await page.waitForTimeout(2500);
 }
 
-async function hideOverlays(page) {
-  // personal data on signed-in pages (emails, API keys, addresses…): blurred in the shot, never shown sharp
-  if (CFG.blurSelectors?.length) await page.addStyleTag({ content: `${CFG.blurSelectors.join(",")}{filter:blur(7px)!important}` });
+async function hideOverlays(page, job = {}) {
+  // personal data on signed-in pages (emails, API keys, other people's names…): blurred in the shot, never sharp.
+  // blurSelectors = CSS; blurText = regexes matched against an element's own text (e.g. "^stk_", "@\\w+").
+  const sel = [...(CFG.blurSelectors ?? []), ...(job.blurSelectors ?? [])];
+  if (sel.length) await page.addStyleTag({ content: `${sel.join(",")}{filter:blur(7px)!important}` });
+  // blurCards = labels of whole cards to blur (e.g. "voice companions": other people's names in a list)
+  const cards = [...(CFG.blurCards ?? []), ...(job.blurCards ?? [])];
+  if (cards.length) await page.evaluate((labels) => {
+    const isCard = (x) => { const c = getComputedStyle(x); return x.getBoundingClientRect().width > 150 && (parseFloat(c.borderTopWidth) > 0 || !/rgba\(0, 0, 0, 0\)|transparent/.test(c.backgroundColor)); };
+    for (const l of labels) {
+      const re = new RegExp(l, "i");
+      const hit = [...document.querySelectorAll("h1,h2,h3,h4,p,span,div")].filter((e) => re.test(e.innerText?.trim() ?? "") && e.innerText.length < 80).sort((a, b) => a.innerText.length - b.innerText.length)[0];
+      let e = hit;
+      while (e && e !== document.body && !isCard(e)) e = e.parentElement;
+      for (let p = e?.parentElement; p && p !== document.body && isCard(p) && Math.abs(p.getBoundingClientRect().width - e.getBoundingClientRect().width) <= 8; p = p.parentElement) e = p;
+      // blur the card's contents but keep its title readable
+      if (e && e !== document.body) for (const ch of e.querySelectorAll("*")) if (!ch.contains(hit) && !hit.contains(ch) && ch.children.length === 0) ch.style.filter = "blur(7px)";
+    }
+  }, cards);
+  const txt = [...(CFG.blurText ?? []), ...(job.blurText ?? [])];
+  if (txt.length) await page.evaluate((pats) => {
+    const res = pats.map((p) => new RegExp(p, "i"));
+    for (const e of document.querySelectorAll("body *")) {
+      const own = [...e.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join("").trim();
+      if (own && res.some((r) => r.test(own))) e.style.filter = "blur(7px)";
+    }
+  }, txt);
   if (CFG.hideSelectors?.length) await page.addStyleTag({ content: `${CFG.hideSelectors.join(",")}{display:none!important} *{scroll-behavior:auto!important}` });
   // consent dialogs and chat widgets often re-mount after navigation: hide fixed boxes containing these words
   await page.evaluate((words) => {
@@ -76,36 +121,53 @@ const ctx = await browser.newContext({ viewport: CFG.viewport ?? { width: 1440, 
 if (CFG.cookies?.length) await ctx.addCookies(CFG.cookies.map((c) => ({ path: "/", url: c.domain ? undefined : BASE, ...c })));
 if (CFG.localStorage) await ctx.addInitScript((kv) => { for (const [k, v] of Object.entries(kv)) localStorage.setItem(k, typeof v === "string" ? v : JSON.stringify(v)); }, CFG.localStorage);
 const out = {};
+const failed = [];
 for (const job of CFG.pages.filter((p) => !ONLY || ONLY.includes(p.name))) {
   const page = await ctx.newPage();
-  await page.goto(BASE + job.path, { waitUntil: "load", timeout: 60000 });
-  if (job.waitFor) await page.waitForSelector(job.waitFor, { timeout: 30000 });
-  await hideOverlays(page);
-  if (job.click) {
-    // the shot shows the state a real click on this control produces
-    await page.getByText(job.click, { exact: true }).first().click();
-    await page.waitForLoadState("load");
-    await page.waitForTimeout(2000);
+  try {
+    await page.goto(BASE + job.path, { waitUntil: "load", timeout: 60000 });
+    if (job.waitFor) await page.waitForSelector(job.waitFor, { timeout: 30000 });
+    await hideOverlays(page, job);
+    if (job.click) {
+      // the shot shows the state a real click on this control produces: exact text, then partial text, then "css:…"
+      const target = job.click.startsWith("css:") ? page.locator(job.click.slice(4)).first()
+        : (await page.getByText(job.click, { exact: true }).count()) ? page.getByText(job.click, { exact: true }).first()
+        : page.getByText(job.click).first();
+      await target.click({ timeout: 15000 });
+      await page.waitForLoadState("load");
+      await page.waitForTimeout(2000);
+    }
+    await settle(page);                 // data loads first, so inner panels actually overflow…
+    await unrollScrollers(page);       // …then unroll them…
+    await settle(page);                // …and scroll the now-tall page so its lazy parts load too
+    await hideOverlays(page, job);
+    out[job.name] = { h: await page.evaluate(() => document.body.scrollHeight), url: page.url() };
+    // a signed-in page that bounced to a login screen films the wrong thing — say so loudly
+    const gated = /login|signin|sign-in|oauth|auth\b/i.test(new URL(page.url()).pathname + new URL(page.url()).search)
+      || await page.evaluate(() => !!document.querySelector("input[type=password]") || /^(sign|log) ?in/i.test(document.querySelector("h1")?.innerText ?? "")
+        // in-page gates: "Log in to continue", a sign-in dialog, OAuth-only buttons
+        || /(log|sign) ?in to (continue|view|see|access)|continue with (discord|google|github|apple|microsoft)|sign in with (discord|google|github|apple)/i.test(document.body.innerText));
+    if (gated) { out[job.name].needsLogin = true; console.warn(`⚠ ${job.name}: landed on a login screen (${page.url()}) — add a session in "cookies" (see SKILL step 3)`); }
+    for (const q of job.queries ?? []) {
+      // one bad selector shouldn't throw away the whole shoot
+      try { out[job.name][q] = await rectsOf(page, q); } catch (e) { out[job.name][q] = []; console.warn(`⚠ ${job.name}: query ${JSON.stringify(q)} failed — ${e.message.split("\n")[0]}`); }
+    }
+    // full page, but capped: docs pages run to 30 000+ px and nothing below ~3 200 px is ever filmed (raise with "tall")
+    const capH = Math.min(out[job.name].h, (job.tall ? job.tall / 2 : 3200));
+    await page.screenshot({ path: `public/pages/${job.name}.png`, fullPage: true, clip: { x: 0, y: 0, width: (CFG.viewport ?? { width: 1440 }).width, height: capH } });
+    console.log(`${job.name.padEnd(18)} ${out[job.name].h}px  ${page.url()}`);
+  } catch (e) {
+    // one broken page (a click that misses, a timeout) must not lose every other page's shots and rects
+    console.warn(`⚠ ${job.name}: ${e.message.split("\n")[0]}`);
+    failed.push(job.name);
+  } finally {
+    await page.close();
   }
-  await settle(page);
-  await hideOverlays(page);
-  out[job.name] = { h: await page.evaluate(() => document.body.scrollHeight), url: page.url() };
-  // a signed-in page that bounced to a login screen films the wrong thing — say so loudly
-  const gated = /login|signin|sign-in|oauth|auth\b/i.test(new URL(page.url()).pathname + new URL(page.url()).search)
-    || await page.evaluate(() => !!document.querySelector("input[type=password]") || /^(sign|log) ?in/i.test(document.querySelector("h1")?.innerText ?? "")
-      // in-page gates: "Log in to continue", a sign-in dialog, OAuth-only buttons
-      || /(log|sign) ?in to (continue|view|see|access)|continue with (discord|google|github|apple|microsoft)|sign in with (discord|google|github|apple)/i.test(document.body.innerText));
-  if (gated) { out[job.name].needsLogin = true; console.warn(`⚠ ${job.name}: landed on a login screen (${page.url()}) — add a session in "cookies" (see SKILL step 3)`); }
-  for (const q of job.queries ?? []) {
-    // one bad selector shouldn't throw away the whole shoot
-    try { out[job.name][q] = await rectsOf(page, q); } catch (e) { out[job.name][q] = []; console.warn(`⚠ ${job.name}: query ${JSON.stringify(q)} failed — ${e.message.split("\n")[0]}`); }
-  }
-  // full page, but capped: docs pages run to 30 000+ px and nothing below ~3 200 px is ever filmed (raise with "tall")
-  const capH = Math.min(out[job.name].h, (job.tall ? job.tall / 2 : 3200));
-  await page.screenshot({ path: `public/pages/${job.name}.png`, fullPage: true, clip: { x: 0, y: 0, width: (CFG.viewport ?? { width: 1440 }).width, height: capH } });
-  console.log(`${job.name.padEnd(18)} ${out[job.name].h}px  ${page.url()}`);
-  await page.close();
 }
+if (failed.length) console.warn(`⚠ failed pages: ${failed.join(", ")} — fix their config and re-run with ONLY=${failed.join(",")}`);
 const prev = ONLY && existsSync(RECTS) ? JSON.parse(readFileSync(RECTS, "utf8")) : {};
-writeFileSync(RECTS, JSON.stringify({ ...prev, ...out }, null, 1));
+// drop pages that are no longer in the config, so stale shots can't be filmed or flagged
+const live = new Set(CFG.pages.map((p) => p.name));
+const merged = Object.fromEntries(Object.entries({ ...prev, ...out }).filter(([k]) => live.has(k)));
+writeFileSync(RECTS, JSON.stringify(merged, null, 1));
 await browser.close();
