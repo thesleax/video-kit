@@ -42,7 +42,7 @@ The host repo should ignore `video/` (suggest adding it to the host's `.gitignor
 | `setup.sh` | one-time install on a fresh Ubuntu/Debian machine |
 | `video.config.json` | site URL + pages to film (from `video.config.example.json`) |
 | `src/kit/` | camera Stage, Cursor, Lift, Num, Say, TopTab … (product-agnostic) |
-| `src/recipes/` | ready scenes: IconReveal, LogoReveal, Glide, Spoken, Caption, Tour, Counters, Typing, ChartReveal, Stagger, LiveLine, Toggle, Toasts, Outro |
+| `src/recipes/` | ready scenes: IconReveal, LogoReveal, Glide, Spoken, Caption, Tour, **Scroll**, Counters, Typing, ChartReveal, Stagger, LiveLine, Toggle, Toasts, Outro |
 | `src/kit/looks.ts` | the looks (night, studio, editorial, kinetic, terminal, pulse): captions, labels, camera, transitions, intro, backdrop, beat response |
 | `src/kit/beat.ts` | the music's map: `bar(n)`, `section("drop", 1)`, kicks — scene starts and the picture's hits come from it |
 | `src/project/` | **the only per-project code**: `outline.md`, `brand.ts`, `direction.ts`, `script.txt`, `timeline.ts`, `scenes.tsx` (+ generated `rects.json`, `vo.json`) |
@@ -106,7 +106,8 @@ Fill `src/project/brand.ts`:
   sites pick the language from the browser instead (`/en` redirects to `/`): capture prints each page's final URL —
   check it, set `"locale"` in the config, and make sure the **content** you'll show is in the video's language
   (a blog or a list may mix languages: lift an item in the right one).
-- `logo`: the square logo mark (favicon.svg is often perfect) → `mkdir -p public/brand && cp … public/brand/logo.svg`
+- `logo`: the square logo mark (favicon.svg is often perfect). If the mark sits on its own solid plate, set
+  `bg: "<plate colour>", glow: false` (doctor reports it) so the plate melts into the background. → `mkdir -p public/brand && cp … public/brand/logo.svg`
   (PNG works too; set `file` accordingly). `tilt` -12 looks good
   for square marks; 0 for round/wordmark-only logos.
 - `name`, `url`.
@@ -175,8 +176,13 @@ Write `video.config.json` → `pages`: one entry per screen you will show **and 
 (a tab, a filter, a search result — use the URL that state has, e.g. `?tab=voice`, or `click`). A `click` that
 navigates away from its page fails the capture (it hit a same-named nav/footer link): use `"click": "css:…"` or
 the tab's URL; set `"leaves": true` when opening another page is the point (a card that opens a detail page).
-Other people in lists (top members, visitors, contacts): `blurPeople: ["<card label>"]` blurs each row's avatar and
-name but keeps the numbers and bars; `blurCards` blurs a whole card's content. Give each page the `queries` for
+Other people in lists (top members, visitors, contacts): `blurPeople: ["^<exact card title>$"]` blurs each row's
+avatar and name but keeps the numbers and bars; `blurCards` blurs a whole card's content. Use the card's exact
+title — a looser label can hit a tab button of the same name instead.
+**Modals and multi-step states** (a follow dialog, an "add" form): `"steps": [{ "fill": "<css>", "text": "…" },
+{ "click": "Follow" }]` — capture stops before anything that saves, sends or pays (it refuses such steps).
+**The whole page:** captures stop at 3200 CSS px unless the page has `"tall": <2x px>` (home 7500 px → 15100) — use it
+for pages the film reads top to bottom. Give each page the `queries` for
 everything the cursor will click or a lift will cut out (see the query forms in `scripts/capture.mjs`;
 `card:<label>` gets the exact card around a label, `css:` lists return the real `href` of each link).
 
@@ -190,7 +196,9 @@ skeleton loaders, and **"⚠ landed on a login screen"** warnings (the session i
 
 ## 6 · Build the video
 
-Read `references/STYLE.md` and `references/SCENES.md` first. For dashboards: `Counters` (numbers tick live),
+Read `references/STYLE.md` and `references/SCENES.md` first. Public pages and detail tabs: `Scroll` (reads a
+page top to bottom at a calm, capped speed; `clicks` = the navbar link or tab that opens it; `from`/`to` = the
+section). For dashboards: `Counters` (numbers tick live),
 `ChartReveal` (a chart draws itself), `Stagger` (table rows / insights / grid cards fill in one by one, inside a Tour),
 `Typing` (`filled` = the page whose button state appears once text is typed). Every recipe reads `direction.ts`, so captions,
 labels, camera tilt, transitions and the intro already follow the look — don't hand-place captions or labels.

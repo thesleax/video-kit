@@ -4,7 +4,7 @@
 import React from "react";
 import { AbsoluteFill, Easing, random, useCurrentFrame } from "remotion";
 import { BRAND } from "../project/brand";
-import { At, C, CAPTION_FONT, Card, Crop, Cursor, FONT, Label, Lift, LogoMark, Num, OffScreen, Rect, Say, Stage, count, fmt, lerp, live, sec, tour } from "../kit";
+import { At, C, CAPTION_FONT, Card, Crop, LOGO, LOGO_GLOW, shotHeight, Cursor, FONT, Label, Lift, LogoMark, Num, OffScreen, Rect, Say, Stage, count, fmt, lerp, live, sec, tour } from "../kit";
 import { DIRECTION as D } from "../project/direction";
 
 /** Show this scene's voice line on screen too: `{ id, at, bold?, from?, to? }` (at = when the line starts). */
@@ -27,8 +27,8 @@ export const IconReveal: React.FC = () => {
     const name = BRAND.name;
     const shown = Math.floor(lerp(f - 22, [0, 34], [0, name.length], Easing.linear));
     return (
-      <AbsoluteFill style={{ background: "#000", ...center }}>
-        <AbsoluteFill style={{ background: `radial-gradient(circle at 50% 50%, ${C.primary}2e 0%, transparent 50%)`, opacity: p }} />
+      <AbsoluteFill style={{ background: LOGO.bg ?? "#000", ...center }}>
+        {LOGO_GLOW && <AbsoluteFill style={{ background: `radial-gradient(circle at 50% 50%, ${C.primary}2e 0%, transparent 50%)`, opacity: p }} />}
         <div style={{ display: "flex", alignItems: "center", gap: 34, opacity: p }}>
           <LogoMark size={120} p={p} />
           <div style={{ fontFamily: CAPTION_FONT, fontWeight: 800, fontSize: 112, color: C.fg, letterSpacing: "0.01em", minWidth: 40 }}>
@@ -41,9 +41,9 @@ export const IconReveal: React.FC = () => {
   const light = lerp(f, [0, 70], [0, 1], Easing.inOut(Easing.cubic));
   const p = lerp(f - 10, [0, 50], [0, 1], Easing.out(Easing.cubic));
   return (
-    <AbsoluteFill style={{ background: "#000", ...center }}>
-      <AbsoluteFill style={{ background: `radial-gradient(circle at 50% 50%, ${C.primary}47 0%, ${C.primary}1a 22%, transparent 55%)`, opacity: light }} />
-      <div style={{ filter: `brightness(${0.15 + 0.85 * light}) drop-shadow(0 0 ${60 * light}px ${C.primary}8c)` }}>
+    <AbsoluteFill style={{ background: LOGO.bg ?? "#000", ...center }}>
+      {LOGO_GLOW && <AbsoluteFill style={{ background: `radial-gradient(circle at 50% 50%, ${C.primary}47 0%, ${C.primary}1a 22%, transparent 55%)`, opacity: light }} />}
+      <div style={{ filter: LOGO_GLOW ? `brightness(${0.15 + 0.85 * light}) drop-shadow(0 0 ${60 * light}px ${C.primary}8c)` : undefined, opacity: LOGO_GLOW ? 1 : light }}>
         <LogoMark size={230} p={p} />
       </div>
     </AbsoluteFill>
@@ -153,6 +153,26 @@ export const Tour: React.FC<{
   );
 };
 
+/** A page read top to bottom: the camera scrolls it at a calm, readable speed (a public profile, a pricing page, a
+ *  tab's content). Optional `clicks` first (e.g. the tab that opens this state; the scroll starts after the last one).
+ *  `from` / `to` = CSS y range to cover; travel is capped at ~10 px per frame on screen, so a long page is shown as far
+ *  as the time allows — give it more time, or split it into two scenes, rather than speeding it up. */
+export const Scroll: React.FC<{
+  dur: number; page: string; from?: number; to?: number; z?: number; fx?: number; clicks?: Click[]; start?: [number, number]; rest?: [number, number];
+  label?: string; n?: number; say?: SayOn; children?: React.ReactNode; tilt?: number;
+}> = ({ dur, page, from = 0, to, z = 1.3, fx = 720, clicks = [], start, rest, label, n, say, children, tilt = 1 }) => {
+  const last = clicks.filter((c) => c.to).pop();
+  const pg = last?.to ?? page;
+  const view = 1080 / z;
+  const begin = last ? last.at + 0.45 : 0.25;
+  const y0 = from + view / 2;
+  const maxTravel = (10 * (dur - begin - 0.3) * 60) / z;
+  const y1 = Math.max(y0, Math.min((to ?? shotHeight(pg)) - view / 2, y0 + maxTravel));
+  const c = (fy: number, ry: number) => ({ fx, fy, z, rx: 6 * tilt, ry: ry * tilt });
+  return <Tour dur={dur} page={page} clicks={clicks} start={start} rest={rest} label={label} n={n} say={say}
+    cam={[[0, c(last ? Math.max(view / 2, mid(clicks[0].r)[1]) : y0, 4)], [Math.max(0.01, begin - 0.15), c(last ? Math.max(view / 2, mid(clicks[0].r)[1]) : y0, 3)], [begin, c(y0, 3)], [dur, c(y1, -3)]]}>{children}</Tour>;
+};
+
 /** Values on the page counting up / ticking live (numbers the voice is reading out). */
 export const Counters: React.FC<{ dur: number; page: string; cam: [number, Cam][]; nums: { r: Rect | number[]; to: number; at?: number; dur?: number; live?: number }[]; label?: string; n?: number; say?: SayOn }> = ({ dur, page, cam, nums, label, n, say }) => {
   const f = useCurrentFrame();
@@ -245,8 +265,8 @@ export const Outro: React.FC<{ at: number; words: Words; urlAt: number }> = ({ a
   const p = lerp(f, [0, 30], [0, 1], Easing.out(Easing.cubic));
   const u = lerp(f - sec(urlAt), [0, 24], [0, 1], Easing.out(Easing.cubic));
   return (
-    <AbsoluteFill style={{ ...center, flexDirection: "column", gap: 34 }}>
-      <div style={{ position: "absolute", width: 1200, height: 900, borderRadius: "50%", background: `radial-gradient(ellipse, ${C.primary}29 0%, transparent 65%)` }} />
+    <AbsoluteFill style={{ ...center, flexDirection: "column", gap: 34, background: LOGO.bg }}>
+      {LOGO_GLOW && <div style={{ position: "absolute", width: 1200, height: 900, borderRadius: "50%", background: `radial-gradient(ellipse, ${C.primary}29 0%, transparent 65%)` }} />}
       <div style={{ display: "flex", alignItems: "center", gap: 36, transform: `scale(${0.88 + p * 0.12})`, opacity: p }}>
         <LogoMark size={140} p={p} />
         <div style={{ fontFamily: FONT, fontWeight: 900, fontSize: 130, color: C.fg, letterSpacing: "0.03em" }}>{BRAND.name}</div>

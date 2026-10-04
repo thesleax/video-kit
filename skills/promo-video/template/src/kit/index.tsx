@@ -23,6 +23,8 @@ export const rect = (page: string, query: string, i = 0): Rect => {
 /** Where a click on that rect really navigates (for checking a tour shows the right next page). */
 export const href = (page: string, query: string, i = 0) => RX[page]?.[query]?.[i]?.[4] as string | undefined;
 export const pageHeight = (page: string) => (RX[page] as unknown as { h: number })?.h;
+/** How much of the page was filmed (CSS px): the screenshot is capped (3200 px, or "tall"). */
+export const shotHeight = (page: string) => { const p = RX[page] as unknown as { h: number; shot?: number }; return p?.shot ?? Math.min(p?.h ?? 900, 3200); };
 
 export const C = BRAND.colors;
 export const FONT = `${BRAND.font.family}, system-ui, sans-serif`;
@@ -296,6 +298,10 @@ export const count = (f: number, at: number, dur: number, to: number, from = 0) 
 export const live = (f: number, base: number, amp: number) => Math.round(base + Math.sin(f * 0.05) * amp + Math.sin(f * 0.23) * amp * 0.3);
 
 /** The product's logo mark (public/brand/…). `p` 0→1 animates it in (scale + tilt settle). */
+/** brand.logo: `bg` = the colour of the logo's own plate (a filled circle / square) — the intro, logo and end card sit on
+ *  that colour so the plate disappears into the background; `glow: false` = no halo behind the mark. */
+export const LOGO = BRAND.logo as { file: string; tilt: number; bg?: string; glow?: boolean };
+export const LOGO_GLOW = LOGO.glow !== false;
 export const LogoMark: React.FC<{ size: number; p?: number }> = ({ size, p = 1 }) => (
   <Img src={staticFile(BRAND.logo.file)} style={{ width: size, height: size, objectFit: "contain", transform: `rotate(${BRAND.logo.tilt * p - 30 * (1 - p)}deg) scale(${0.85 + 0.15 * p})` }} />
 );

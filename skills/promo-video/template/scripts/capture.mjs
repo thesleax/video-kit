@@ -63,7 +63,7 @@ async function hideOverlays(page, job = {}) {
   const people = [...(CFG.blurPeople ?? []), ...(job.blurPeople ?? [])].map((l) => ["people", l]);
   if (cards.length || people.length) await page.evaluate((jobs) => {
     const isCard = (x) => { const c = getComputedStyle(x); return x.getBoundingClientRect().width > 150 && (parseFloat(c.borderTopWidth) > 0 || !/rgba\(0, 0, 0, 0\)|transparent/.test(c.backgroundColor)); };
-    const numeric = (t) => /^[\s#\d.,:%+\-−×xX~<>]*([dhms]|min|hrs?|[KMB]|msgs?|members?|views?|sessions?)?[\s\d.,:%dhms]*$/i.test(t);
+    const numeric = (t) => /^(?:[\s\d.,:%+\-−×~<>#/]|[KMB]\b|[dhms]\b|min|hrs?|msgs?|members?|views?|sessions?|joins?|days?)*$/i.test(t); // "15.6K msg", "4d 10h", "#3"
     for (const [mode, l] of jobs) {
       const re = new RegExp(l, "i");
       const hit = [...document.querySelectorAll("h1,h2,h3,h4,p,span,div")].filter((e) => re.test(e.innerText?.trim() ?? "") && e.innerText.length < 80).sort((a, b) => a.innerText.length - b.innerText.length)[0];
@@ -71,11 +71,16 @@ async function hideOverlays(page, job = {}) {
       while (e && e !== document.body && !isCard(e)) e = e.parentElement;
       for (let p = e?.parentElement; p && p !== document.body && isCard(p) && Math.abs(p.getBoundingClientRect().width - e.getBoundingClientRect().width) <= 8; p = p.parentElement) e = p;
       if (e && e !== document.body && mode === "people") {
-        for (const img of e.querySelectorAll("img, svg image, [style*='background-image']")) {
+        // only a real card (not a page-sized wrapper), only avatar-sized images, only row-sized rows
+        if (e.getBoundingClientRect().height > Math.max(1600, innerHeight * 1.8) || e.getBoundingClientRect().width > innerWidth * 0.95) continue;
+        for (const img of e.querySelectorAll("img, svg image")) {
+          const ir = img.getBoundingClientRect();
+          if (ir.width > 72 || ir.height > 72) continue; // a banner or a server icon header, not a person
           let row = img.parentElement;  // the row: the nearest ancestor that also holds text
           while (row && row !== e && (row.innerText ?? "").trim().length < 2) row = row.parentElement;
+          if (!row || row === e || row.getBoundingClientRect().height > 140 || row.contains(hit)) continue;
           img.style.filter = "blur(7px)";
-          if (row && row !== e) for (const ch of row.querySelectorAll("*")) if (ch.children.length === 0 && ch.innerText?.trim() && !numeric(ch.innerText.trim())) ch.style.filter = "blur(7px)";
+          for (const ch of row.querySelectorAll("*")) if (ch.children.length === 0 && ch.innerText?.trim() && !numeric(ch.innerText.trim())) ch.style.filter = "blur(7px)";
         }
         continue;
       }
@@ -142,21 +147,34 @@ for (const job of CFG.pages.filter((p) => !ONLY || ONLY.includes(p.name))) {
     await page.goto(BASE + job.path, { waitUntil: "load", timeout: 60000 });
     if (job.waitFor) await page.waitForSelector(job.waitFor, { timeout: 30000 });
     await hideOverlays(page, job);
-    if (job.click) {
-      // the shot shows the state a real click on this control produces: "css:…", else a tab / button with that text
-      // inside main (not the nav or footer link of the same name), then exact text, then partial text
-      const inMain = page.locator("main").getByRole("tab", { name: job.click }).or(page.locator("main").getByRole("button", { name: job.click, exact: true }));
-      const target = job.click.startsWith("css:") ? page.locator(job.click.slice(4)).first()
+    // `click` = one control; `steps` = a short interaction before the shot, e.g. open a modal without confirming it:
+    //   [{ "fill": "input[placeholder*='Username']", "text": "sleaxyy" }, { "wait": 1500 }, { "click": "Follow" }]
+    // Never a step that saves, sends, pays or deletes: the film shows the state, it doesn't change the account.
+    const steps = [...(job.click ? [{ click: job.click }] : []), ...(job.steps ?? [])];
+    for (const st of steps) {
+      if (st.wait) { await page.waitForTimeout(st.wait); continue; }
+      if (st.fill) { await page.locator(st.fill).first().fill(st.text ?? "", { timeout: 15000 }); await page.waitForTimeout(st.after ?? 1500); continue; }
+      if (!st.click) continue;
+      if (/^(save|send|submit|confirm|delete|remove|pay|buy|subscribe|unfollow)\b/i.test(st.click)) throw new Error(`step "${st.click}" would change the account — films show states, they don't save them`);
+      // the state a real click on this control produces: "css:…", else a button / tab with exactly that text outside
+      // the nav, sidebar and footer (a sidebar link of the same name is not the tab), then any element with exactly
+      // that text, then partial text
+      const esc = st.click.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const body = page.locator(":is(button, [role=tab]):not(:is(aside, nav, footer, [role=navigation]) *)");
+      const inMain = body.filter({ hasText: new RegExp(`^\\s*${esc}\\s*$`) });
+      const inPage = body.filter({ hasText: st.click }); // a tab with a count or icon text beside its name
+      const target = st.click.startsWith("css:") ? page.locator(st.click.slice(4)).first()
         : (await inMain.count()) ? inMain.first()
-        : (await page.getByText(job.click, { exact: true }).count()) ? page.getByText(job.click, { exact: true }).first()
-        : page.getByText(job.click).first();
+        : (await inPage.count()) ? inPage.first()
+        : (await page.getByText(st.click, { exact: true }).count()) ? page.getByText(st.click, { exact: true }).first()
+        : page.getByText(st.click).first();
       const before = new URL(page.url()).pathname;
       await target.click({ timeout: 15000 });
       await page.waitForLoadState("load");
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(st.after ?? 2000);
       // a tab click that lands on another page hit a same-named link (nav, footer): say so, don't film it as the tab
       const after = new URL(page.url()).pathname;
-      if (after !== before && !job.leaves) throw new Error(`click "${job.click}" left ${before} for ${after} — it hit a link, not the tab. Use "click": "css:main [role=tab]:has-text('…')" (or "leaves": true if leaving is intended)`);
+      if (after !== before && !job.leaves) throw new Error(`click "${st.click}" left ${before} for ${after} — it hit a link, not the tab. Use the tab's URL (?tab=…), "css:…", or "leaves": true if leaving is intended`);
     }
     await settle(page);                 // data loads first, so inner panels actually overflow…
     await unrollScrollers(page);       // …then unroll them…
@@ -184,6 +202,7 @@ for (const job of CFG.pages.filter((p) => !ONLY || ONLY.includes(p.name))) {
     // full page, but capped: docs pages run to 30 000+ px and nothing below ~3 200 px is ever filmed (raise with "tall")
     const capH = Math.min(out[job.name].h, (job.tall ? job.tall / 2 : 3200));
     await page.screenshot({ path: `public/pages/${job.name}.png`, fullPage: true, clip: { x: 0, y: 0, width: (CFG.viewport ?? { width: 1440 }).width, height: capH } });
+    out[job.name].shot = capH; // filmed height in CSS px (the page may be taller): Scroll stops here
     console.log(`${job.name.padEnd(18)} ${out[job.name].h}px  ${page.url()}`);
   } catch (e) {
     // one broken page (a click that misses, a timeout) must not lose every other page's shots and rects

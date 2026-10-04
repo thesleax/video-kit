@@ -39,6 +39,25 @@ src/kit/looks.ts). Where a rule below names a specific treatment, it is the defa
 - Need more time for the depth? Extend the track (repeat 8 bars of a drop) rather than dropping systems.
 - Track it in `src/project/outline.md`; the coverage check in QA compares it to the scene list.
 
+## Unhurried narration
+
+"Bir yeri göstericen diye seslendirme hızlı veya altyazı hızlı olmasın, düzgünce tanıt": never squeeze a line into
+a short scene. Each line gets its scene plus ~0.8 s of air; a long page gets more bars (or two scenes), not a faster
+voice or a faster scroll. `Scroll` caps travel at ~10 px/frame — if it stops short, add time. More captions are
+welcome (most lines on screen), each at the voice's own pace.
+
+## Pages are read, not dissected
+
+On public detail pages (a profile, an item, a server page): click each tab and scroll it with the voice — no lifted
+cards ("herhangi bir kartı focuslamasına gerek yok"). Lifts, staggers and charts drawing are for the dashboard's
+own panels, where they explain data.
+
+## The logo
+
+A mark on its own plate (a filled circle / square) sits on that plate's colour, with no halo
+(`logo: { bg: "#…", glow: false }`; doctor detects the plate). "Logoya arkadan efekt verme, logo rengiyle arka plan
+aynı olsun."
+
 ## Two films must not look alike
 
 The user rejected a second product's film for looking like the first ("yine aynı temada olmuş… aynısı olmuş"): same

@@ -35,8 +35,9 @@ Override any field the product calls for: `direct({ look: "studio", transition: 
 | **terminal** | developer tools, APIs, infra, CLIs | mono lower-third with accent bar | corner tag | mild tilt, clean fades | name types in | minimal techno / techy electronic | tech |
 | **pulse** | any product on a fast, punchy track (phonk, jumpstyle, trap, hard dance) | lower-third **UPPERCASE slammed** in per word; statements centred | corner tag | strongest tilt, hard cuts on the bar, zoom punch + shake on every kick, flash into drops | logo lit from black | the user's track | cinematic |
 
-Every look answers the music through `beat` (punch / flash / shake on the kicks of `src/project/music.json`):
-strong in pulse and kinetic, a touch in night, off in studio and editorial. Override with `direct({ …, beat: { … } })`.
+Every look answers the music through `beat`: a flash into each drop (off in studio and editorial). Zoom punch and
+shake on the kicks exist (`direct({ …, beat: { punch: 1, shake: 0.5 } })`) but are off by default — a user rejected
+the frame zooming with the beat. Cuts still land on bars.
 
 Captions never move around inside one film: one placement, one type treatment, everywhere.
 
@@ -56,6 +57,16 @@ Captions never move around inside one film: one placement, one type treatment, e
   click on drop 2's first beat → detail pages and their tabs → premium → CTA. Many short lines; captions on most.
 - **terminal** — the job it does in one line → the real UI / docs / code doing it (Typing into the real search or
   console, Tour through the dashboard) → speed or scale numbers → docs + CTA.
+
+- **full tour** (the default for a product with a public site AND a signed-in app, when the user wants everything —
+  a 2½–4 min film; extend the track with bar-exact repeats): hook → the **whole home page**, read top to bottom, one
+  line per section → through the **real navbar**: each public section (leaderboards / catalogue → open one item →
+  **every tab of its page, clicked and scrolled**, no card focusing) → pricing / premium, read calmly in the break →
+  "then there's your dashboard" → the dashboard and its deepest panel (per-item analytics, tab by tab) → the
+  feature systems (following / alerts / settings and their modals, privacy, API, digests) → the hero search on the
+  last drop → the detail page it opens, every tab → CTA. The user's own words: "anasayfanın tamamını gösterelim",
+  "navbardaki leaderboard premium sayfalarına girsin", "users/id ve servers/id de bütün tablara girip sadece aşağı
+  kaydırsa ve ses olsa yeterli", "users/id kısmını dashboardaki searchdan sonra".
 
 ## 4 · Feature → scene (pick by what the product really has)
 

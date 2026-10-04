@@ -61,11 +61,23 @@ else:
 logo = re.search(r'logo:\s*\{[^}]*file:\s*"([^"]+)"', brand)
 if not logo or not os.path.exists(f"public/{logo[1]}"):
     err(f"logo missing (public/{logo[1] if logo else '?'}) — copy the product's square mark")
+elif not logo[1].endswith(".svg"):
+    # a mark on its own solid plate (a filled circle / square): the film's background must be that colour, no halo
+    try:
+        from PIL import Image
+        im = Image.open(f"public/{logo[1]}").convert("RGBA")
+        w, h = im.size
+        corner, edge = im.getpixel((1, 1)), im.getpixel((w // 2, max(2, h // 64)))
+        if corner[3] < 40 and edge[3] > 240 and "bg:" not in brand[brand.find("logo:"):brand.find("logo:") + 200]:
+            hexc = "#%02x%02x%02x" % edge[:3]
+            warn(f"the logo sits on a solid {hexc} plate — set logo: {{ …, bg: \"{hexc}\", glow: false }} in brand.ts so the plate melts into the background instead of floating on a glow")
+    except Exception:
+        pass
 
 # ---- captures
 vw, vh = (cfg.get("viewport") or {}).get("width", 1440), (cfg.get("viewport") or {}).get("height", 900)
 # only pages the film uses are checked; probes and old captures just get listed
-used_pages = set(re.findall(r'(?:page=|rect\(\s*|to:\s*|pg:\s*|\[\s*[\d.]+\s*,\s*)"([\w-]+)"', scenes)) if scenes.strip() else set(rects)
+used_pages = {n for n in rects if f'"{n}"' in scenes} if scenes.strip() else set(rects)  # any mention: rect(), page=, to:, helper args
 unused = sorted(set(rects) - used_pages)
 if unused:
     warn(f"captured but unused in scenes.tsx: {', '.join(unused)} — fine for probes; drop them from video.config.json to keep captures fast")

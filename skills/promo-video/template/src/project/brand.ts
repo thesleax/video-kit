@@ -18,5 +18,7 @@ export const BRAND = {
   // Font file copied into public/fonts/ (woff2), same family the site uses.
   font: { family: "Brand", file: "fonts/brand.woff2", weights: "300 900" },
   // Logo mark (square icon) copied into public/brand/. Shown alone in the intro and end card.
-  logo: { file: "brand/logo.svg", tilt: -12 },
+  // bg: the colour of the logo's own plate if it has one (doctor reports it) — intro/outro use it as background;
+  // glow: false when a halo behind the mark looks wrong (a mark on a solid plate)
+  logo: { file: "brand/logo.svg", tilt: -12 } as { file: string; tilt: number; bg?: string; glow?: boolean },
 };
