@@ -69,6 +69,7 @@ used_pages = set(re.findall(r'(?:page=|rect\(\s*|to:\s*|pg:\s*|\[\s*[\d.]+\s*,\s
 unused = sorted(set(rects) - used_pages)
 if unused:
     warn(f"captured but unused in scenes.tsx: {', '.join(unused)} — fine for probes; drop them from video.config.json to keep captures fast")
+used_q = {(m[1], m[2].replace('\\"', '"')) for m in re.finditer(r'rect\(\s*"([^"]+)"\s*,\s*"((?:[^"\\]|\\.)*)"', scenes)}
 for name, page in rects.items():
     if name not in used_pages:
         continue
@@ -90,7 +91,7 @@ for name, page in rects.items():
         except Exception:
             pass
     for q, hits in page.items():
-        if not isinstance(hits, list):
+        if not isinstance(hits, list) or (scenes.strip() and (name, q) not in used_q):
             continue
         for r in hits:
             if len(r) < 4: continue
@@ -121,6 +122,11 @@ for m in re.finditer(r'r:\s*rect\(\s*"([^"]+)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*(?:,\
         if href and dest and not (dest.endswith(href) or href.endswith(dest) or href.split("?")[0] == dest.split("?")[0]):
             err(f"fake click: {p} › {q}[{i}] links to {href} but the scene shows '{to}' ({dest})")
     elif len(hit) > i and len(hit[i]) <= 4:
+        # verified when the capture of `to` was made by really clicking this control on the source page
+        src_path = next((pg.get("path") for pg in cfg.get("pages", []) if pg["name"] == p), None)
+        job = next((pg for pg in cfg.get("pages", []) if pg["name"] == to), {})
+        if job.get("click") and (job.get("path") == src_path or rects.get(p, {}).get("url", "").endswith(job.get("path", "\0"))):
+            continue
         warn(f"click {p} › {q}[{i}] → '{to}' has no href (a button or a div): verify it with a capture page using \"click\"")
 
 # ---- voice
@@ -152,6 +158,9 @@ if os.path.exists("node_modules"):
             if b - a > 6:
                 warn(f"{b - a:.1f}s without voice between {a:.1f}s and {b:.1f}s — fine on a music drop, a dead gap otherwise")
         music = re.search(r'file:\s*"([^"]+)"', timeline[timeline.find("MUSIC"):]) if "MUSIC" in timeline else None
+        bedm = re.search(r'bed:\s*"([^"]+)"', timeline[timeline.find("MUSIC"):]) if "MUSIC" in timeline else None
+        if bedm and not os.path.exists(f"public/{bedm[1]}"):
+            err(f"MUSIC.bed public/{bedm[1]} missing — scripts/music.py analyze <the file MUSIC.file plays> writes it")
         if music:
             mp = f"public/{music[1]}"
             if not os.path.exists(mp):
@@ -160,6 +169,18 @@ if os.path.exists("node_modules"):
                 d = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", mp], capture_output=True, text=True).stdout or 0)
                 if d < end - 0.5:
                     err(f"music is {d:.1f}s but the film is {end}s — it would stop early")
+        # cuts on the music: with a beat-driven look, every non-black scene should start on a bar of the track
+        mus = json.loads(read("src/project/music.json") or "{}")
+        direction = read("src/project/direction.ts")
+        mfile = re.search(r'file:\s*"([^"]+)"', timeline[timeline.find("MUSIC"):]) if "MUSIC" in timeline else None
+        if mus.get("bars") and mfile and os.path.basename(mus.get("file", "")) != os.path.basename(mfile[1]):
+            warn(f"src/project/music.json was analyzed from {os.path.basename(mus.get('file', '?'))} but the film plays {mfile[1]} — re-run scripts/music.py analyze public/{mfile[1]} so bars and kicks match")
+        elif mus.get("bars") and not re.search(r'look:\s*"(studio|editorial)"', direction):
+            for sc in tl["scenes"]:
+                if sc.get("black") or sc["at"] == 0: continue
+                off = min(abs(sc["at"] - b) for b in mus["bars"])
+                if off > 0.05:
+                    warn(f"scene '{sc['id']}' starts {off:.2f}s off the nearest bar — cut on the music: at: bar(n) (src/kit/beat.ts)")
 # effect names are the 2nd field of SFX tuples: `…), "click", 0.5` or `0.4, "sparkle", 0.3` (not scene ids in at("…"))
 for f in set(re.findall(r'(?:\)|\d)\s*,\s*"([a-z-]+)"\s*,\s*[\d.]+', timeline)):
     if not os.path.exists(f"public/sfx/{f}.mp3"):

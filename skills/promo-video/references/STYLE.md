@@ -30,7 +30,27 @@ src/kit/looks.ts). Where a rule below names a specific treatment, it is the defa
   Public detail pages (profiles, item pages) belong in it too when the product has them.
 - **Depth over breadth:** a core feature gets its real interactions (open → switch tab / filter → data reacts →
   drill into a detail), not a single static frame. Secondary features can be one beat each.
+- **Every system, not the first screen of it.** `scripts/features.py` lists every page, its sections and tabs. A
+  product's deepest pages (a per-server analytics panel, a profile with eight tabs, a public item page with its
+  own tabs) each get several shots: every tab that has data, its charts drawing, its tables filling. Rejected:
+  a Stalkly cut that showed the dashboard home but not the per-server Command Center, the profile tabs or the
+  public server page ("çok eksikler var… users/id, servers/id önemli tab yerleri").
+- Ask the user what must be in and out; if they leave it to you, say what you chose.
+- Need more time for the depth? Extend the track (repeat 8 bars of a drop) rather than dropping systems.
 - Track it in `src/project/outline.md`; the coverage check in QA compares it to the scene list.
+
+## Two films must not look alike
+
+The user rejected a second product's film for looking like the first ("yine aynı temada olmuş… aynısı olmuş"): same
+look, same track, same scene order. The look comes from the product and the track (direct.py, which also pushes
+down what earlier films used); the scene list comes from this product's own systems; the user's own music is used
+when they give one.
+
+## Privacy in lists
+
+Other people's names and avatars (top members, visitors, contacts, companions) are blurred at capture —
+`blurPeople` keeps the numbers and bars readable, `blurCards` blurs a whole card. Account warnings ("your access
+ends soon", unpaid invoices) stay out of frame.
 
 ## Interaction honesty (the user calls violations "fake")
 
@@ -39,6 +59,9 @@ src/kit/looks.ts). Where a rule below names a specific treatment, it is the defa
   showed the *Trending* list (it was the 4th card).
 - **Pointing hand only on a control that is about to be clicked.** No hovering with a hand over things that are
   never clicked. While waiting (typing etc.) the arrow rests in **empty space**, never on another button/chip.
+- **The control the cursor clicks is visible when it clicks.** Rejected: the typing overlay painted over a search
+  button that sits inside the input, so the cursor clicked empty space. `Typing` now clears only up to the button and
+  shows its enabled state (`filled`); check every click in stills.
 - Cursor arrives ~0.2 s before the click, presses, a soft ripple shows, then it moves on (`tour()` does this).
   Cursor moves need ≥ 0.45 s; plan click times so they do (click on the first words of a sentence if needed).
 - Overlays drawn on the UI must be things the product really does (a value ticking, a favourite star filling,

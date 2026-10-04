@@ -63,7 +63,8 @@ export const Scene: React.FC<{ dur: number; children: React.ReactNode; inF?: num
   if (black) return <AbsoluteFill style={{ opacity: v }}>{children}</AbsoluteFill>;
   const t = D.transition;
   const style: React.CSSProperties =
-    t === "push" ? { opacity: v, transform: `translateX(${(1 - a) * 140 - (1 - b) * 140}px)` }
+    t === "cut" ? { transform: `scale(${1 + lerp(f, [0, 5], [0.07, 0], Easing.out(Easing.cubic))})`, filter: f < 4 ? `brightness(${1.6 - f * 0.15})` : undefined }
+    : t === "push" ? { opacity: v, transform: `translateX(${(1 - a) * 140 - (1 - b) * 140}px)` }
     : t === "zoom" ? { opacity: v, transform: `scale(${1.14 - 0.14 * a - (1 - b) * 0.08})`, filter: a < 1 ? `blur(${(1 - a) * 10}px)` : undefined }
     : t === "wipe" ? { opacity: b, clipPath: a < 1 ? `inset(0 ${(1 - a) * 100}% 0 0)` : undefined }
     : t === "fade" ? { opacity: v }
@@ -136,6 +137,12 @@ const StageView: React.FC<StageProps> = ({ pages, cam, soft, children }) => {
 export const At: React.FC<{ r: Rect | number[]; style?: React.CSSProperties; children?: React.ReactNode }> = ({ r, style, children }) => {
   const z = useZ();
   return <div style={{ position: "absolute", left: r[0] * z, top: r[1] * z, width: r[2] * z, height: r[3] * z, ...style }}>{children}</div>;
+};
+
+/** A piece of another capture pasted over the page in place (a button's enabled state, a row from a later shot). */
+export const Crop: React.FC<{ pg: string; r: Rect | number[]; style?: React.CSSProperties }> = ({ pg, r, style }) => {
+  const z = useZ();
+  return <At r={r} style={{ backgroundImage: `url(${page(pg)})`, backgroundSize: `${1440 * z}px auto`, backgroundPosition: `${-r[0] * z}px ${-r[1] * z}px`, ...style }} />;
 };
 
 /** A piece of the page lifting off toward the camera (pair with Stage `soft`). */
@@ -225,8 +232,17 @@ export const Say: React.FC<{ words: [number, string][]; at: number; size?: numbe
   return (
     <div style={{ fontFamily: CAPTION_FONT, fontSize: size, color: C.fg, letterSpacing: `${D.caption.tracking ?? -0.02}em`, textTransform: D.caption.upper ? "uppercase" : undefined, lineHeight: D.caption.upper ? 1.0 : 1.1, display: "flex", flexWrap: "wrap", gap: `0 ${size * 0.25}px`, textShadow: "0 4px 40px rgba(0,0,0,.6)", ...style }}>
       {words.map(([t, w], i) => {
-        const p = lerp(f - at - sec(t) + 3, [0, 14], [0, 1]);
         const bold = w.startsWith("*");
+        if (D.caption.anim === "slam") {
+          const k = f - at - sec(t) + 2;
+          const s = k < 0 ? 0 : interpolate(k, [0, 4, 9], [1.45, 0.97, 1], { extrapolateRight: "clamp" });
+          return (
+            <span key={i} style={{ display: "inline-block", fontWeight: bold ? accent : regular, color: bold ? C.primarySoft : undefined, opacity: k < 0 ? 0 : Math.min(1, k / 2), transform: `scale(${s})`, transformOrigin: "0% 70%", /* grows rightward: never over the word before it */ textShadow: bold ? `0 0 40px ${C.primary}aa, 0 4px 40px rgba(0,0,0,.7)` : undefined }}>
+              {w.replace(/\*/g, "")}
+            </span>
+          );
+        }
+        const p = lerp(f - at - sec(t) + 3, [0, 14], [0, 1]);
         return (
           <span key={i} style={{ display: "inline-block", fontWeight: bold ? accent : regular, color: bold && D.caption.upper ? C.primarySoft : undefined, opacity: p, transform: `translateY(${(1 - p) * size * 0.35}px)`, filter: p < 1 ? `blur(${(1 - p) * 12}px)` : undefined }}>
             {w.replace(/\*/g, "")}

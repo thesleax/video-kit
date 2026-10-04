@@ -14,7 +14,7 @@ export const SCENES: SceneDef[] = [
 // Voice lines that start inside another scene (e.g. "Meet NAME." just before the logo hit).
 export const EXTRA_VO: { id: string; at: number }[] = [{ id: "02", at: 6.7 }];
 export const END = 26.0;
-export const MUSIC = { file: "music/edit.wav", base: 0.38, duck: 0.3, fadeOut: 3 };
+export const MUSIC = { file: "music/edit.wav", bed: "music/edit_bed.wav", base: 0.36, duck: 0.17, fadeOut: 3 };
 
 const at = (scene: string, t: number) => SCENES.find((s) => s.id === scene)!.at + t;
 /** [time, sfx name (public/sfx/<name>.mp3), volume, optional length to trim long tails] */

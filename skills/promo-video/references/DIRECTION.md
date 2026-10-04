@@ -10,7 +10,9 @@ named, how the camera moves, how scenes hand over, what the music and sounds fee
 .venv/bin/python scripts/direct.py ..        # after detect + a first capture; ../frontend in monorepos
 ```
 It ranks the looks with reasons (category words in the copy, serif / mono / grotesk fonts, accent saturation,
-light vs dark pages). Then decide like a director, using what you learned in step 2:
+light vs dark pages, **the user's track** — tempo, punch — and the user's earlier films, so two films don't come out
+alike). The music is half the film's character: the same product on a calm corporate track and on a phonk track
+should be two different films. Then decide like a director, using what you learned in step 2:
 - **Who watches?** gamers / community admins (night, kinetic), teams and buyers (studio), developers (terminal),
   readers and creatives (editorial), consumers (kinetic).
 - **What's the hero?** a live number, a search, an editor, a dashboard, a catalogue — pick the story shape below
@@ -31,6 +33,10 @@ Override any field the product calls for: `direct({ look: "studio", transition: 
 | **editorial** | media, blogs, portfolios, serif brands | centred display type | small corner tag | slow, almost flat, wipe cuts | name types in | sparse piano / ambient pop | soft |
 | **kinetic** | consumer, social, shops, youth | centred **UPPERCASE**, accent words in brand colour | none | strong tilt, zoom cuts | logo pop | bright dance / pop | playful |
 | **terminal** | developer tools, APIs, infra, CLIs | mono lower-third with accent bar | corner tag | mild tilt, clean fades | name types in | minimal techno / techy electronic | tech |
+| **pulse** | any product on a fast, punchy track (phonk, jumpstyle, trap, hard dance) | lower-third **UPPERCASE slammed** in per word; statements centred | corner tag | strongest tilt, hard cuts on the bar, zoom punch + shake on every kick, flash into drops | logo lit from black | the user's track | cinematic |
+
+Every look answers the music through `beat` (punch / flash / shake on the kicks of `src/project/music.json`):
+strong in pulse and kinetic, a touch in night, off in studio and editorial. Override with `direct({ …, beat: { … } })`.
 
 Captions never move around inside one film: one placement, one type treatment, everywhere.
 
@@ -44,6 +50,10 @@ Captions never move around inside one film: one placement, one type treatment, e
   rapid clicking; the product's best page is the hero; end on the name and URL.
 - **kinetic** — one word or short phrase per bar, big type over moving UI, 3 quick features, a loud CTA. Shortest
   (30–60 s), fastest cutting — but each move still within the pace budget (references/QA.md).
+- **pulse** — cut every bar (≈1.9 s at 129 BPM): cold-open question in the intro → the numbers on the build → name
+  slammed on drop 1 → the core product one shot per bar (dashboard → its panels → each tab of the deepest page:
+  charts drawing, lists filling) → the personal / quieter features in the break + the search question → the hero
+  click on drop 2's first beat → detail pages and their tabs → premium → CTA. Many short lines; captions on most.
 - **terminal** — the job it does in one line → the real UI / docs / code doing it (Typing into the real search or
   console, Tour through the dashboard) → speed or scale numbers → docs + CTA.
 

@@ -4,7 +4,7 @@
 import React from "react";
 import { AbsoluteFill, Easing, random, useCurrentFrame } from "remotion";
 import { BRAND } from "../project/brand";
-import { At, C, CAPTION_FONT, Card, Cursor, FONT, Label, Lift, LogoMark, Num, OffScreen, Rect, Say, Stage, count, fmt, lerp, live, sec, tour } from "../kit";
+import { At, C, CAPTION_FONT, Card, Crop, Cursor, FONT, Label, Lift, LogoMark, Num, OffScreen, Rect, Say, Stage, count, fmt, lerp, live, sec, tour } from "../kit";
 import { DIRECTION as D } from "../project/direction";
 
 /** Show this scene's voice line on screen too: `{ id, at, bold?, from?, to? }` (at = when the line starts). */
@@ -81,7 +81,7 @@ export const Placed: React.FC<{ words: Words; at: number; place?: Place; size?: 
   const sz = size ?? (place === "center" ? Math.round(D.caption.size * 1.25) : D.caption.size);
   if (place === "center") return (
     <AbsoluteFill style={{ pointerEvents: "none" }}>
-      <Shade o={0.75} />
+      <Shade o={D.caption.anim === "slam" ? 0.55 : 0.75} />
       <AbsoluteFill style={center}><Say at={sec(at)} size={sz} words={words} style={{ maxWidth: 1560, justifyContent: "center", textAlign: "center" }} /></AbsoluteFill>
     </AbsoluteFill>
   );
@@ -170,8 +170,9 @@ export const Counters: React.FC<{ dur: number; page: string; cam: [number, Cam][
 };
 
 /** Typing queries into the site's real input, then clicking its real button (lands on a beat / drop). */
-export const Typing: React.FC<{ dur: number; page: string; input: Rect | number[]; button: Rect | number[]; queries: { text: string; from: number; to: number }[]; focusAt: number; clickAt: number; cam: [number, Cam][]; fontScale?: number }> = ({ dur, page, input, button, queries, focusAt, clickAt, cam, fontScale = 2.1 }) => {
+export const Typing: React.FC<{ dur: number; page: string; input: Rect | number[]; button: Rect | number[]; queries: { text: string; from: number; to: number }[]; focusAt: number; clickAt: number; cam: [number, Cam][]; fontScale?: number; filled?: string }> = ({ dur, page, input, button, queries, focusAt, clickAt, cam, fontScale = 2.1, filled }) => {
   const f = useCurrentFrame();
+  const inside = button[0] > input[0] && button[0] + button[2] <= input[0] + input[2] + 4 && button[1] >= input[1] - 4 && button[1] + button[3] <= input[1] + input[3] + 4;
   const active = [...queries].reverse().find((q) => f >= sec(q.from) - 4) ?? queries[0];
   const q = active.text.slice(0, Math.floor(lerp(f, [sec(active.from), sec(active.to)], [0, active.text.length], Easing.linear)));
   const typing = queries.some((x) => f >= sec(x.from) && f <= sec(x.to) + 6);
@@ -181,7 +182,10 @@ export const Typing: React.FC<{ dur: number; page: string; input: Rect | number[
   c.path.splice(4, 0, [sec(focusAt) + 30, button[0] + button[2] + 90, button[1] - 60], [sec(clickAt) - 40, button[0] + button[2] + 70, button[1] - 50]);
   return (
     <Stage pages={[[0, page]]} cam={keys(cam)}>
-      <At r={[input[0] + 6, input[1] + 6, input[2] - 12, input[3] - 12]} style={{ background: C.bg }} />
+      {/* clear the placeholder only up to the button: many search boxes hold their button INSIDE the input */}
+      <At r={[input[0] + 6, input[1] + 6, (inside ? button[0] - input[0] - 6 : input[2]) - 12, input[3] - 12]} style={{ background: C.bg }} />
+      {/* a button that wakes up once there is text (disabled → enabled): show the filled page's real button */}
+      {filled && <Crop pg={filled} r={button} style={{ opacity: lerp(f, [sec(queries[0].from), sec(queries[0].from) + 8], [0, 1]) }} />}
       <At r={input} style={{ borderRadius: 20, boxShadow: f >= sec(focusAt) ? `0 0 0 2px ${C.primary}, 0 0 0 6px ${C.primary}29` : undefined }} />
       <At r={[input[0] + 14, input[1], input[2] - 20, input[3]]} style={{ display: "flex", alignItems: "center", fontFamily: FONT, color: C.fg }}>
         <span style={{ fontSize: `${fontScale}em`, whiteSpace: "pre" }}>{q}</span>
@@ -189,6 +193,28 @@ export const Typing: React.FC<{ dur: number; page: string; input: Rect | number[
       </At>
       <Cursor {...c} />
     </Stage>
+  );
+};
+
+/** Rows / cards filling in one after another — a table loading, insights arriving, a grid populating. Put it in a
+ *  Tour's children (page coordinates). `bg` = the surface behind the rows (they are hidden on it until their turn).
+ *  Row rects: a capture query ("css:main tr", "re:…" on each row's text) or measured from the shot — then check them
+ *  in stills: a hidden row that's mis-measured shows as a hole in the card. */
+export const Stagger: React.FC<{ pg: string; items: (Rect | number[])[]; at: number; step?: number; bg?: string; from?: "left" | "up"; after?: number }> = ({ pg, items, at, step = 0.1, bg = C.card, from = "up", after = 0 }) => {
+  const f = useCurrentFrame();
+  if (f < sec(after)) return null; // `after` = when its page is on screen (a click's time + a few frames)
+  return (
+    <>
+      {items.map((r, i) => {
+        const p = lerp(f - sec(at + i * step), [0, 16], [0, 1]);
+        return (
+          <React.Fragment key={i}>
+            {p < 1 && <At r={r} style={{ background: bg }} />}
+            <Crop pg={pg} r={r} style={{ opacity: p, transform: from === "left" ? `translateX(${(1 - p) * -36}px)` : `translateY(${(1 - p) * 22}px)` }} />
+          </React.Fragment>
+        );
+      })}
+    </>
   );
 };
 

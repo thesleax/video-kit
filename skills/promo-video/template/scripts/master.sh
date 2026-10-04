@@ -11,3 +11,12 @@ ffmpeg -v error -y -i "$IN" -c:v copy \
 ffmpeg -v error -y -i "$OUT" -vf scale=1280:-2 -r 30 -c:v libx264 -crf 28 -preset slow -c:a aac -b:a 128k -movflags +faststart "${OUT%.mp4}_720p.mp4"
 ffmpeg -hide_banner -i "$OUT" -af ebur128=peak=true -f null - 2>&1 | grep -E "^\s+(I|LRA|Peak):" | tail -3
 echo "-> $OUT and ${OUT%.mp4}_720p.mp4"
+# remember this film, so the next one doesn't come out the same (scripts/direct.py reads it)
+mkdir -p ~/.cache/video-kit
+python3 - <<PY >> ~/.cache/video-kit/films.jsonl
+import json, os, re, datetime
+look = re.search(r'look:\s*"(\w+)"', open("src/project/direction.ts").read())
+brand = re.search(r'name:\s*"([^"]+)"', open("src/project/brand.ts").read())
+mus = json.load(open("src/project/music.json")) if os.path.exists("src/project/music.json") else {}
+print(json.dumps({"project": brand[1] if brand else "?", "look": look[1] if look else "?", "music": mus.get("file", ""), "date": datetime.date.today().isoformat()}))
+PY

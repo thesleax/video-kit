@@ -68,12 +68,38 @@ if shots:
     if theme == "light":
         score["studio"] += 0.8; score["editorial"] += 0.6; why["studio"].append("light-themed pages"); why["editorial"].append("light-themed pages")
 
+# ---- the music the user chose (src/project/music.json from scripts/music.py analyze) shapes the film as much as the product
+score["pulse"], why["pulse"] = 0.0, []
+mus = json.load(open("src/project/music.json")) if os.path.exists("src/project/music.json") else {}
+if mus.get("bpm"):
+    pace, punch = mus.get("pace"), mus.get("punch", 0)
+    if pace == "fast" and punch >= 0.45:
+        score["pulse"] += 2.0 + score["night"] * 0.5 + score["kinetic"] * 0.5; why["pulse"].append(f"fast, punchy track ({mus['bpm']} BPM, punch {punch}) — cut on the bar, hit on the kick")
+        score["editorial"] -= 1; score["studio"] -= 0.6
+    elif pace == "slow":
+        score["studio"] += 0.6; score["editorial"] += 0.6; why["studio"].append(f"slow track ({mus['bpm']} BPM)"); why["editorial"].append(f"slow track ({mus['bpm']} BPM)")
+        score["kinetic"] -= 0.6
+    else:
+        score["night"] += 0.3; why["night"].append(f"mid-tempo track ({mus['bpm']} BPM)")
+else:
+    print("(no src/project/music.json yet — run scripts/music.py analyze on the user's track first; the music changes the pick)")
+
+# ---- don't make the same film twice: the user's earlier films (written by scripts/master.sh)
+hist_path = os.path.expanduser("~/.cache/video-kit/films.jsonl")
+hist = [json.loads(l) for l in open(hist_path)] if os.path.exists(hist_path) else []
+for h in hist[-3:]:
+    if h.get("look") in score:
+        score[h["look"]] -= 0.3; why[h["look"]].append(f"used for {h.get('project', '?')} already")
+    if mus.get("file") and os.path.basename(h.get("music", "")) == os.path.basename(mus["file"]):
+        print(f"! the same music as the {h.get('project')} film — ask the user for another track unless they want it")
+
 rank = sorted(score, key=lambda k: -score[k])
 MOOD = {
     "night": ("future bass / energetic electronic (A Future Bass)", "ui", "hook → name on the hit → rapid feature tour on drop 1 → question in the breakdown → hero on drop 2 → outro"),
     "studio": ("calm-positive corporate / modern electronic (Upbeat Motivational Corporate, Play Right)", "soft", "problem → product → 3–4 pillars as numbered chapters → proof (numbers) → CTA"),
     "editorial": ("warm, sparse, piano/ambient-pop", "soft", "a sentence-led film: few scenes, long holds, each headline its own beat → CTA"),
     "kinetic": ("bright dance / pop, punchy", "playful", "fast hook → big word beats every bar → 3 quick features → loud CTA"),
+    "pulse": ("phonk / jumpstyle / hard dance — the user's track", "cinematic", "cold open on the kick → logo slam on the drop → one shot per bar through the features → breakdown: the question + typing → hero on drop 2 → CTA slam"),
     "terminal": ("techy electronic / minimal techno (Play Right, All In My Head)", "tech", "the job it does → how (real UI/code) → speed/scale numbers → docs/CTA"),
 }
 print(f"product: {det.get('framework')} · {', '.join(det.get('liveUrlHints', [])[:1]) or 'no live URL found'} · pages look {theme}"
@@ -82,6 +108,7 @@ print("\nlooks, best first:")
 for k in rank:
     print(f"  {k:<10} {score[k]:4.2f}  " + ("; ".join(why[k]) or "no signal"))
 best = rank[0]
+print("\nThe user can also name a look (or ask for one between two) — their call beats the score.")
 print(f"\nsuggested src/project/direction.ts:\n  export const DIRECTION = direct({{ look: \"{best}\"" + (', theme: "light"' if theme == "light" else "") + " });")
 print(f"music mood: {MOOD[best][0]}\nsfx set:    {MOOD[best][1]}\nstory:      {MOOD[best][2]}")
 if score[rank[0]] - score[rank[1]] < 0.4:

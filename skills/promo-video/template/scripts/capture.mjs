@@ -7,7 +7,7 @@
 //   "re:<regex>"       innermost elements whose text matches, document order
 //   "<exact text>"     smallest element with exactly that text → its clickable ancestor
 // Page options: path, queries, click (text of a control to press first), waitFor (selector), tall (keep N px),
-//   blurSelectors / blurText / blurCards (per page, on top of the global ones).
+//   blurSelectors / blurText / blurCards / blurPeople (per page, on top of the global ones).
 // Config options: site, viewport, scale, colorScheme, locale, headers, cookies, localStorage, blurSelectors, blurText, hideSelectors,
 //   hideFixedText (words: hides fixed/sticky/absolute popovers, banners and promo boxes containing them).
 // Usage: node scripts/capture.mjs            all pages in video.config.json
@@ -57,19 +57,32 @@ async function hideOverlays(page, job = {}) {
   const sel = [...(CFG.blurSelectors ?? []), ...(job.blurSelectors ?? [])];
   if (sel.length) await page.addStyleTag({ content: `${sel.join(",")}{filter:blur(7px)!important}` });
   // blurCards = labels of whole cards to blur (e.g. "voice companions": other people's names in a list)
-  const cards = [...(CFG.blurCards ?? []), ...(job.blurCards ?? [])];
-  if (cards.length) await page.evaluate((labels) => {
+  const cards = [...(CFG.blurCards ?? []), ...(job.blurCards ?? [])].map((l) => ["all", l]);
+  // blurPeople = labels of cards listing people (a top-members table, a visitors list): each row with an avatar gets
+  // its avatar and name blurred, while numbers, bars and the card title stay sharp — the feature reads, nobody shows
+  const people = [...(CFG.blurPeople ?? []), ...(job.blurPeople ?? [])].map((l) => ["people", l]);
+  if (cards.length || people.length) await page.evaluate((jobs) => {
     const isCard = (x) => { const c = getComputedStyle(x); return x.getBoundingClientRect().width > 150 && (parseFloat(c.borderTopWidth) > 0 || !/rgba\(0, 0, 0, 0\)|transparent/.test(c.backgroundColor)); };
-    for (const l of labels) {
+    const numeric = (t) => /^[\s#\d.,:%+\-−×xX~<>]*([dhms]|min|hrs?|[KMB]|msgs?|members?|views?|sessions?)?[\s\d.,:%dhms]*$/i.test(t);
+    for (const [mode, l] of jobs) {
       const re = new RegExp(l, "i");
       const hit = [...document.querySelectorAll("h1,h2,h3,h4,p,span,div")].filter((e) => re.test(e.innerText?.trim() ?? "") && e.innerText.length < 80).sort((a, b) => a.innerText.length - b.innerText.length)[0];
       let e = hit;
       while (e && e !== document.body && !isCard(e)) e = e.parentElement;
       for (let p = e?.parentElement; p && p !== document.body && isCard(p) && Math.abs(p.getBoundingClientRect().width - e.getBoundingClientRect().width) <= 8; p = p.parentElement) e = p;
+      if (e && e !== document.body && mode === "people") {
+        for (const img of e.querySelectorAll("img, svg image, [style*='background-image']")) {
+          let row = img.parentElement;  // the row: the nearest ancestor that also holds text
+          while (row && row !== e && (row.innerText ?? "").trim().length < 2) row = row.parentElement;
+          img.style.filter = "blur(7px)";
+          if (row && row !== e) for (const ch of row.querySelectorAll("*")) if (ch.children.length === 0 && ch.innerText?.trim() && !numeric(ch.innerText.trim())) ch.style.filter = "blur(7px)";
+        }
+        continue;
+      }
       // blur the card's contents but keep its title readable
       if (e && e !== document.body) for (const ch of e.querySelectorAll("*")) if (!ch.contains(hit) && !hit.contains(ch) && ch.children.length === 0) ch.style.filter = "blur(7px)";
     }
-  }, cards);
+  }, [...cards, ...people]);
   const txt = [...(CFG.blurText ?? []), ...(job.blurText ?? [])];
   if (txt.length) await page.evaluate((pats) => {
     const res = pats.map((p) => new RegExp(p, "i"));
@@ -122,6 +135,7 @@ if (CFG.cookies?.length) await ctx.addCookies(CFG.cookies.map((c) => ({ path: "/
 if (CFG.localStorage) await ctx.addInitScript((kv) => { for (const [k, v] of Object.entries(kv)) localStorage.setItem(k, typeof v === "string" ? v : JSON.stringify(v)); }, CFG.localStorage);
 const out = {};
 const failed = [];
+const before = existsSync(RECTS) ? JSON.parse(readFileSync(RECTS, "utf8")) : {};
 for (const job of CFG.pages.filter((p) => !ONLY || ONLY.includes(p.name))) {
   const page = await ctx.newPage();
   try {
@@ -129,13 +143,20 @@ for (const job of CFG.pages.filter((p) => !ONLY || ONLY.includes(p.name))) {
     if (job.waitFor) await page.waitForSelector(job.waitFor, { timeout: 30000 });
     await hideOverlays(page, job);
     if (job.click) {
-      // the shot shows the state a real click on this control produces: exact text, then partial text, then "css:…"
+      // the shot shows the state a real click on this control produces: "css:…", else a tab / button with that text
+      // inside main (not the nav or footer link of the same name), then exact text, then partial text
+      const inMain = page.locator("main").getByRole("tab", { name: job.click }).or(page.locator("main").getByRole("button", { name: job.click, exact: true }));
       const target = job.click.startsWith("css:") ? page.locator(job.click.slice(4)).first()
+        : (await inMain.count()) ? inMain.first()
         : (await page.getByText(job.click, { exact: true }).count()) ? page.getByText(job.click, { exact: true }).first()
         : page.getByText(job.click).first();
+      const before = new URL(page.url()).pathname;
       await target.click({ timeout: 15000 });
       await page.waitForLoadState("load");
       await page.waitForTimeout(2000);
+      // a tab click that lands on another page hit a same-named link (nav, footer): say so, don't film it as the tab
+      const after = new URL(page.url()).pathname;
+      if (after !== before && !job.leaves) throw new Error(`click "${job.click}" left ${before} for ${after} — it hit a link, not the tab. Use "click": "css:main [role=tab]:has-text('…')" (or "leaves": true if leaving is intended)`);
     }
     await settle(page);                 // data loads first, so inner panels actually overflow…
     await unrollScrollers(page);       // …then unroll them…
@@ -147,7 +168,15 @@ for (const job of CFG.pages.filter((p) => !ONLY || ONLY.includes(p.name))) {
       || await page.evaluate(() => !!document.querySelector("input[type=password]") || /^(sign|log) ?in/i.test(document.querySelector("h1")?.innerText ?? "")
         // in-page gates: "Log in to continue", a sign-in dialog, OAuth-only buttons
         || /(log|sign) ?in to (continue|view|see|access)|continue with (discord|google|github|apple|microsoft)|sign in with (discord|google|github|apple)/i.test(document.body.innerText));
-    if (gated) { out[job.name].needsLogin = true; console.warn(`⚠ ${job.name}: landed on a login screen (${page.url()}) — add a session in "cookies" (see SKILL step 3)`); }
+    if (gated) {
+      const why = CFG.cookies?.length ? "the session in \"cookies\" has expired or was logged out — ask the user for a fresh one" : "add a session in \"cookies\" (see SKILL step 3)";
+      // never overwrite a good signed-in shot with a login screen: keep the old shot and rects, fail this page
+      if (before[job.name] && !before[job.name].needsLogin && existsSync(`public/pages/${job.name}.png`)) {
+        delete out[job.name];
+        throw new Error(`landed on a login screen — ${why}; kept the previous shot`);
+      }
+      out[job.name].needsLogin = true; console.warn(`⚠ ${job.name}: landed on a login screen (${page.url()}) — ${why}`);
+    }
     for (const q of job.queries ?? []) {
       // one bad selector shouldn't throw away the whole shoot
       try { out[job.name][q] = await rectsOf(page, q); } catch (e) { out[job.name][q] = []; console.warn(`⚠ ${job.name}: query ${JSON.stringify(q)} failed — ${e.message.split("\n")[0]}`); }
@@ -165,7 +194,7 @@ for (const job of CFG.pages.filter((p) => !ONLY || ONLY.includes(p.name))) {
   }
 }
 if (failed.length) console.warn(`⚠ failed pages: ${failed.join(", ")} — fix their config and re-run with ONLY=${failed.join(",")}`);
-const prev = ONLY && existsSync(RECTS) ? JSON.parse(readFileSync(RECTS, "utf8")) : {};
+const prev = ONLY ? before : Object.fromEntries(failed.filter((k) => before[k]).map((k) => [k, before[k]]));
 // drop pages that are no longer in the config, so stale shots can't be filmed or flagged
 const live = new Set(CFG.pages.map((p) => p.name));
 const merged = Object.fromEntries(Object.entries({ ...prev, ...out }).filter(([k]) => live.has(k)));

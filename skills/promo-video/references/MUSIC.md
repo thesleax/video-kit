@@ -30,6 +30,13 @@ there's an intro, two drops and an outro to cut against.
 it in `video/public/music/track.mp3`. If they dislike every suggestion, ask what they disliked (too corporate?
 too happy? too calm?) and search the artist's page with that in mind rather than guessing again.
 
+## The user's own track
+
+Any track the user gives (a phonk edit, a pop song, lo-fi …) works: `analyze` reads its tempo, sections, kicks and
+ending, and the film is built on them (cuts on bars, the look's beat response on kicks, hero on drop 2). Mind the
+license: a track from a streaming service is fine for a private preview; for a public upload the user must have
+the rights (Content ID will claim it otherwise) — say so once, don't refuse.
+
 ## Reading the track
 
 ```bash

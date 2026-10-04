@@ -25,15 +25,18 @@ Open Claude Code in any project and ask for a video — the skill loads by itsel
 
 or call it directly: `/video-kit:promo-video english, 90 seconds, show the dashboard and the AI search`.
 
-Claude studies the project (framework, pages, colours, font, logo), creates a `video/` workspace next to it,
-writes the script, generates the voice-over, analyses the music, films the site, builds the scenes, runs the checks
-and renders the video. It only asks you to download the music file (Pixabay doesn't allow server downloads) and to
-approve the script. First run on a machine installs the toolchain (~8 minutes, `video/setup.sh`).
+Claude studies the project: framework, colours, font, logo, and an inventory of **every page and system** read from
+the source (`scripts/features.py`: dashboards, per-item analytics panels, profile tabs, premium pages…). It asks you
+what must be shown and what must stay out (or decides itself if you leave it to it), asks for a session cookie when
+the important parts are behind a login, and reads **your music** (any track: tempo, sections, kicks, ending) and your
+choice of voice. Then it writes the script, voices it, films the site, builds the scenes on the music's bars, runs
+the checks and renders. First run on a machine installs the toolchain (~8 minutes, `video/setup.sh`).
 
 ## Styled for each product
 
-The film's look is chosen per product — not one template for everything. `scripts/direct.py` reads the product
-(its copy, fonts, colours, light/dark pages, audience) and ranks five looks; Claude decides and explains why:
+The film's look is chosen per product **and per track** — not one template for everything. `scripts/direct.py` reads
+the product (copy, fonts, colours, light/dark pages, audience), the music (tempo, punch) and your earlier films (so
+two films don't look alike) and ranks six looks; Claude decides and explains why — or you name one:
 
 | Look | For | Feel |
 |---|---|---|
@@ -42,6 +45,7 @@ The film's look is chosen per product — not one template for everything. `scri
 | editorial | media, blogs, portfolios, serif brands | centred display type, wipes, slow and sparse |
 | kinetic | consumer, social, shops | big centred uppercase words, zoom cuts, playful sounds |
 | terminal | developer tools, APIs | mono lower-third captions, clean fades, tech sounds |
+| pulse | any product on a fast, punchy track (phonk, jumpstyle, trap) | hard cuts on every bar, the frame hits on each kick, flash into drops, slammed uppercase captions |
 
 The scene list follows the product's real features too (search → typing into the real input, charts → the real
 chart drawing itself, lists → clicking into the real detail page…).
@@ -55,7 +59,7 @@ chart drawing itself, lists → clicking into the real detail page…).
 | **Voice** | Kokoro TTS, `af_heart` voice (local, free, commercial use allowed) + word timings from whisper.cpp |
 | **Music** | Alex_MakeMusic (Pixabay) — recommended tracks in `skills/promo-video/references/MUSIC.md`; beat/drop analysis and a cutting tool |
 | **Sound effects** | The 21 Mixkit effects from the reference video (downloaded during setup) — `references/SOUND.md` |
-| **Checks** | pace audit (optical flow), voice-over-music ratio per line, -14 LUFS mastering |
+| **Checks** | `doctor.py` (login bounces, fake clicks, tab clicks that hit a link, unvoiced lines, cuts off the bar, music map mismatch, privacy), QA stills that flag off-screen targets, pace audit (optical flow), voice-over-music ratio per line, -14 LUFS mastering |
 
 ## Layout
 

@@ -7,9 +7,14 @@ argument-hint: "[notes: language, length, music, features to show]"
 
 # Product promo video
 
-You are making a ~60–100 s, 1080p60 product video of the project in the current working directory: a camera
+You are making a ~60–110 s, 1080p60 product video of the project in the current working directory: a camera
 gliding over the product's **real** UI, a macOS cursor really using it, a voice-over with word-synced captions,
-licensed music with scenes cut on its beats, and modern UI sound effects. User notes: $ARGUMENTS
+music with every cut on its bars, and modern UI sound effects. User notes: $ARGUMENTS
+
+The bar is a finished film in one pass (two at most): **the whole product, in depth, in a style that is this
+product's and this track's own.** Three inputs shape it and the user may set any of them: **what to show** (step 2:
+you inventory every system, then ask), **the music** (their track: steps 3/5 read its tempo, sections and kicks and
+build the film on them), **the voice** (VOICE.md). The look follows the product *and* the music unless they name one.
 
 **The style is decided per product** (step 3, references/DIRECTION.md): caption placement, section names, camera,
 transitions, intro, music, sound and the scene list all follow from what the product is and who it's for — never
@@ -37,11 +42,12 @@ The host repo should ignore `video/` (suggest adding it to the host's `.gitignor
 | `setup.sh` | one-time install on a fresh Ubuntu/Debian machine |
 | `video.config.json` | site URL + pages to film (from `video.config.example.json`) |
 | `src/kit/` | camera Stage, Cursor, Lift, Num, Say, TopTab … (product-agnostic) |
-| `src/recipes/` | ready scenes: IconReveal, LogoReveal, Glide, Spoken, Caption, Tour, Counters, Typing, ChartReveal, LiveLine, Toggle, Toasts, Outro |
-| `src/kit/looks.ts` | the looks (night, studio, editorial, kinetic, terminal): caption placement, labels, camera, transitions, intro, backdrop |
+| `src/recipes/` | ready scenes: IconReveal, LogoReveal, Glide, Spoken, Caption, Tour, Counters, Typing, ChartReveal, Stagger, LiveLine, Toggle, Toasts, Outro |
+| `src/kit/looks.ts` | the looks (night, studio, editorial, kinetic, terminal, pulse): captions, labels, camera, transitions, intro, backdrop, beat response |
+| `src/kit/beat.ts` | the music's map: `bar(n)`, `section("drop", 1)`, kicks — scene starts and the picture's hits come from it |
 | `src/project/` | **the only per-project code**: `outline.md`, `brand.ts`, `direction.ts`, `script.txt`, `timeline.ts`, `scenes.tsx` (+ generated `rects.json`, `vo.json`) |
 | `src/Promo.tsx` | engine: plays the timeline, ducks music under voice, stems for checks |
-| `scripts/` | detect, direct, capture, pages, font, tts, music, measure, stills, **doctor**, dump-timeline, audit, mixcheck, master, fetch-sfx |
+| `scripts/` | detect, **features**, direct, capture, pages, font, tts, music, measure, stills, **doctor**, dump-timeline, audit, mixcheck, master, fetch-sfx |
 
 ## 1 · Setup (once per machine)
 
@@ -65,6 +71,17 @@ Then actually learn the product, the way a new teammate would:
   editor / workspace (analytics, SaaS, tools), the film must show it signed in — a film of only the public
   marketing pages is shallow and was rejected. Public detail pages (profiles, items) are must-shows too when the
   product has them. Admin/internal pages: never, unless asked.
+- Run the **feature inventory** — it reads the source, so nothing hides from it:
+  ```bash
+  .venv/bin/python scripts/features.py ..     # every route: public / signed-in / premium / admin, its sections and tabs
+  ```
+  `◆deep` pages (many sections: a per-item analytics panel, a profile with tabs) are where the product's value is;
+  a film that skips them was rejected ("çok eksikler var"). Each `◆deep` page gets several shots — every tab with
+  data, its charts drawing, its lists filling — and `★premium` pages get at least one. Per-item pages (`[id]`) are
+  filmed on one real item (the user's own server / profile). Skip tabs that are empty for that item.
+- **Ask the user what to show** (AskUserQuestion, multiSelect, grouped from the inventory: e.g. "Dashboard
+  panels", "Per-server analytics", "Public profiles", "Premium") and what must stay out. If they leave it to you,
+  pick by the rule above and say what you picked. Record it in `outline.md`.
 - Plan **depth**, not just presence: each must-show feature gets its real interactions (open it → switch a tab or
   filter → the data reacts → drill into a detail page), the way a user would show it to a friend.
 - Pick the one "hero" feature (the most impressive interaction) — it goes on the music's biggest moment.
@@ -96,10 +113,15 @@ Fill `src/project/brand.ts`:
 
 ## 3 · Direct: choose the film's style, then agree on the basics
 
-Do a first capture of the main pages (step 5's `npm run capture`, can be refined later), then:
+Get the music first (below) and analyze it (`scripts/music.py analyze`, step 5 — it writes `src/project/music.json`),
+do a first capture of the main pages (step 5), then:
 ```bash
-.venv/bin/python scripts/direct.py ..      # ranks the looks for THIS product, with reasons
+.venv/bin/python scripts/direct.py ..      # ranks the looks for THIS product AND THIS track, with reasons
 ```
+It weighs the product's copy, fonts and colours, the track's tempo and punch (a fast, punchy track → `pulse`: hard
+cuts on the bar, the frame hits on each kick, a flash into each drop, slammed captions), and the user's earlier
+films (`~/.cache/video-kit/films.jsonl`): a look or a track used last time is pushed down — two films must not
+look alike. If the user names a look, use it.
 Decide the look as a director (references/DIRECTION.md: audience, hero feature, the brand's own voice), write
 `src/project/direction.ts` (`direct({ look: "studio", … })` plus any overrides), and pick the story shape and the
 scene list from the product's real features (DIRECTION §3–4). Music mood and SFX set follow the look.
@@ -114,7 +136,7 @@ Put it in `video.config.json` → `cookies`, and list personal data to blur in `
 billing details, other users' private info). Local dev servers can use a seeded demo user instead.
 
 Then one short message to the user: the look and why, the outline (from `outline.md`), and only what you can't decide: **language** (default English for reach), **length** (default: fit the track,
-60–100 s), and **music**. Offer tracks from `references/MUSIC.md` that fit the look's mood, with links (house artist: Alex_MakeMusic on
+60–110 s), and **music** — if they gave a track (any file: phonk, pop, lo-fi …), use it; otherwise suggest some. Offer tracks from `references/MUSIC.md` that fit the look's mood, with links (house artist: Alex_MakeMusic on
 Pixabay). Pixabay blocks server downloads, so the user downloads the MP3 and drops it into
 `video/public/music/track.mp3` (`mkdir -p public/music` if setup hasn't created it). Voice: default `af_heart` (see `references/VOICE.md`); offer samples
 (`.venv/bin/python scripts/tts.py voices` after writing line 01) only if they want to choose.
@@ -137,15 +159,24 @@ Show the user the script (and a listening link if you can publish one) before bu
 ```bash
 .venv/bin/python scripts/music.py analyze public/music/track.mp3
 ```
-Map the structure (references/MUSIC.md): intro → first hit (logo) → drop 1 (feature tour) → breakdown (the question,
-typing) → drop 2 (hero reveal) → outro (logo + URL). If the track is longer than the story, remove whole
+It prints the sections (intro / build / drop / break / outro), the character (pace, punch, how it ends), how often
+to cut, and a film plan, and writes `src/project/music.json` — `timeline.ts` then places scenes with `bar(n)` from
+`src/kit/beat.ts`, so every cut is on a bar. Map the story on it: intro → first hit (logo) → drop 1 (feature tour) →
+breakdown (the question, typing) → drop 2 (hero reveal) → outro (logo + URL).
+**Too short for the depth you need?** Repeat 8 bars of a drop instead of cutting content:
+`scripts/music.py cut track.mp3 A B` with B < A (both bar starts, B = A − 8 bars) keeps [0,A) and plays from B again.
+After any cut, re-run `analyze` on `public/music/edit.wav` so `music.json` matches what plays (doctor checks). If the track is longer than the story, remove whole
 8-bar phrases from inside a drop: `scripts/music.py cut public/music/track.mp3 A B` (pick A/B from its
 "best phrase cuts", similarity ≥ 0.99), or jump from the end of your story straight to the music's pre-outro bar.
 **A and B must both be bar starts from analyze's bar list** — a cut that lands mid-bar shifts the beat. Size the
 cut to the speech: no music-only gap longer than ~3 s before the outro. The engine plays `public/music/edit.wav`.
 
 Write `video.config.json` → `pages`: one entry per screen you will show **and one per state a click produces**
-(a tab, a filter, a search result — use `click` or the URL that click opens). Give each page the `queries` for
+(a tab, a filter, a search result — use the URL that state has, e.g. `?tab=voice`, or `click`). A `click` that
+navigates away from its page fails the capture (it hit a same-named nav/footer link): use `"click": "css:…"` or
+the tab's URL; set `"leaves": true` when opening another page is the point (a card that opens a detail page).
+Other people in lists (top members, visitors, contacts): `blurPeople: ["<card label>"]` blurs each row's avatar and
+name but keeps the numbers and bars; `blurCards` blurs a whole card's content. Give each page the `queries` for
 everything the cursor will click or a lift will cut out (see the query forms in `scripts/capture.mjs`;
 `card:<label>` gets the exact card around a label, `css:` lists return the real `href` of each link).
 
@@ -159,7 +190,9 @@ skeleton loaders, and **"⚠ landed on a login screen"** warnings (the session i
 
 ## 6 · Build the video
 
-Read `references/STYLE.md` and `references/SCENES.md` first. Every recipe reads `direction.ts`, so captions,
+Read `references/STYLE.md` and `references/SCENES.md` first. For dashboards: `Counters` (numbers tick live),
+`ChartReveal` (a chart draws itself), `Stagger` (table rows / insights / grid cards fill in one by one, inside a Tour),
+`Typing` (`filled` = the page whose button state appears once text is typed). Every recipe reads `direction.ts`, so captions,
 labels, camera tilt, transitions and the intro already follow the look — don't hand-place captions or labels.
 Number section labels in order (`label="…" n={1}`) for chapter looks. Give the lines that carry the pitch an on-screen
 caption (`say={{ id: "05", at: 0.2, bold: ["live"] }}` on Tour / Counters / ChartReveal) — references/STYLE.md
@@ -172,6 +205,9 @@ caption (`say={{ id: "05", at: 0.2, bold: ["live"] }}` on Tour / Counters / Char
 3. Measure real data you overlay: `scripts/measure.py chart <page> x y w h` gives a chart's plot box and peak.
 4. Preview as you go: `bash scripts/stills.sh 1.5 4 8 …` renders stills at those seconds into one labelled
    `out/sheet.png` — look at it after every change; ~30 points across the timeline catch most problems.
+   Stills run in QA mode: a red **LIFT / CLICK OFF-SCREEN** badge marks a card or click the camera isn't framing
+   (a query that matched the wrong element, or a camera pointed elsewhere). Also look for: words overlapping,
+   text typed outside the frame, personal data (emails, keys, other people's names), warning banners of the account.
    `npm run studio` also works if you can open a browser.
 
 ## 7 · Check (every time; details in references/QA.md)
@@ -197,6 +233,10 @@ Copy `out/final.mp4` to where the user wants it, give them a preview (publish th
 what's in it and the credits (music: artist + Pixabay link; SFX: Mixkit; voice: Kokoro af_heart).
 
 ## Render time and fast iteration
+
+Low memory (other services on the box, or a render killed for memory): render in parts with one browser tab and
+join them — `npx remotion render Promo out/parts/p0.mp4 --frames=0-1099 --muted --concurrency=1` … then the audio
+alone (`--codec=wav`), `ffmpeg -f concat` the parts and mux the audio, then `npm run master`.
 
 No GPU: ~0.5 s per 1080p60 frame → a 95 s video ≈ 45–60 min. So:
 - audio-only fixes: re-render audio (`--codec=wav`) and mux onto the existing video (`ffmpeg -i raw.mp4 -i a.wav -map 0:v -map 1:a -c:v copy …`) — minutes, not an hour.
