@@ -52,7 +52,7 @@ The host repo should ignore `video/` (suggest adding it to the host's `.gitignor
 ## 1 · Setup (once per machine)
 
 ```bash
-bash setup.sh          # ffmpeg, Node 22, Remotion, Playwright+Chromium, Python venv, Kokoro, whisper.cpp, SFX
+bash setup.sh          # ffmpeg, Node.js LTS, Remotion, Playwright+Chromium, Python venv, Kokoro, whisper.cpp, SFX
 ```
 Check: `node -v` ≥ 20, `ffmpeg -version`, `whisper-cli -h`, `ls public/sfx | wc -l` = 22 (21 effects + CREDITS),
 `.venv/bin/python -c "import kokoro_onnx, librosa, cv2"`. Machines without a GPU are fine (see "Render time").

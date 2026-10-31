@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # One-time setup on a fresh Ubuntu/Debian VDS (safe to re-run: every step skips what's already there).
-# Installs: ffmpeg, Node 22 (nvm) + Remotion/Playwright, Chromium deps, Python venv (Kokoro TTS, librosa,
+# Installs: ffmpeg, Node.js LTS (nvm) + Remotion/Playwright, Chromium deps, Python venv (Kokoro TTS, librosa,
 # OpenCV), Kokoro voice model, whisper.cpp + base.en model, and the Mixkit sound effects.
 #   bash setup.sh
 set -euo pipefail
@@ -19,11 +19,11 @@ else
 fi
 
 say "node"
-if ! command -v node >/dev/null || [ "$(node -p 'process.versions.node.split(".")[0]')" -lt 20 ]; then
+if ! command -v node >/dev/null || [ "$(node -p 'process.versions.node.split(".")[0]')" -lt 22 ]; then
   export NVM_DIR="$HOME/.nvm"
-  [ -s "$NVM_DIR/nvm.sh" ] || curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+  [ -s "$NVM_DIR/nvm.sh" ] || curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.8/install.sh | bash
   # shellcheck disable=SC1091
-  . "$NVM_DIR/nvm.sh"; nvm install 22 >/dev/null; nvm use 22 >/dev/null
+  . "$NVM_DIR/nvm.sh"; nvm install --lts >/dev/null; nvm use --lts >/dev/null
 fi
 node -v
 
