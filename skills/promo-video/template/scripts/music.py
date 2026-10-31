@@ -14,6 +14,7 @@ drop 1, the "problem/question" beat in the breakdown, the hero feature exactly o
 outro. Cut whole phrases (8 bars) from the middle of a drop when the video is shorter than the track.
 """
 import json, os, subprocess, sys
+from pathlib import Path
 import numpy as np
 import librosa
 
@@ -69,7 +70,7 @@ def analyze(path):
     plan(path, y, sr, dur, tempo, beats, bars, energy, low, hop)
     bed(path)
     os.makedirs("out", exist_ok=True)
-    json.dump({"duration": dur, "tempo": tempo, "beats": [round(float(b), 3) for b in beats], "bars": [round(float(b), 3) for b in bars], "energy": energy}, open("out/music.json", "w"))
+    Path("out/music.json").write_text(json.dumps({"duration": dur, "tempo": tempo, "beats": [round(float(b), 3) for b in beats], "bars": [round(float(b), 3) for b in bars], "energy": energy}))
 
 
 def sections(energy, bars, dur):
@@ -117,8 +118,8 @@ def plan(path, y, sr, dur, tempo, beats, bars, energy, low, hop):
     out = {"file": path, "duration": round(dur, 3), **char, "sections": secs,
            "bars": [round(float(b), 3) for b in bars], "beats": [round(float(b), 3) for b in beats], "kicks": kicks}
     os.makedirs("public/music", exist_ok=True)
-    json.dump(out, open("src/project/music.json", "w"))
-    print(f"\nsections: " + " · ".join(f"{s['kind']} {s['from']:.1f}-{s['to']:.1f}" for s in secs))
+    Path("src/project/music.json").write_text(json.dumps(out))
+    print("\nsections: " + " · ".join(f"{s['kind']} {s['from']:.1f}-{s['to']:.1f}" for s in secs))
     print(f"character: {char['pace']} ({char['bpm']} BPM), punch {char['punch']}, dynamics {char['dynamics']}, ends with a {ending}; "
           f"cut every {char['barsPerShot']} bar(s) ≈ {char['barsPerShot'] * char['bar']:.1f}s")
     if drops:

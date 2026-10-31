@@ -9,6 +9,7 @@ suggested `direct({...})` for src/project/direction.ts, and the matching music m
 The agent makes the call (references/DIRECTION.md) — this is evidence, not a verdict.
 """
 import colorsys, glob, json, os, re, subprocess, sys
+from pathlib import Path
 
 root = sys.argv[1] if len(sys.argv) > 1 else ".."
 det = json.loads(subprocess.run(["node", "scripts/detect.mjs", root], capture_output=True, text=True).stdout)
@@ -20,7 +21,7 @@ for pat, cap in [("README*", 4), ("readme*", 4), ("docs/*.md", 6), ("**/messages
                  ("**/i18n/dict/en.ts", 2), ("**/app/**/page.tsx", 12), ("**/pages/index.*", 4), ("**/components/**/*.tsx", 40), ("**/components/**/*.vue", 40)]:
     for f in [x for x in glob.glob(os.path.join(root, pat), recursive=True) if not SKIP.search(x)][:cap]:
         try:
-            text += open(f, errors="ignore").read()[:60000].lower() + "\n"
+            text += Path(f).read_text(errors="ignore")[:60000].lower() + "\n"
         except OSError:
             pass
 
@@ -49,7 +50,7 @@ if re.search(r"geist|inter|figtree|manrope|plus jakarta|sf pro|satoshi", fonts):
     score["studio"] += 0.3; why["studio"].append("a neutral geometric/grotesk UI font")
 
 # ---- colours: brand.ts primary saturation, page lightness from captures
-brand = open("src/project/brand.ts").read()
+brand = Path("src/project/brand.ts").read_text()
 m = re.search(r'primary:\s*"#([0-9a-fA-F]{6})"', brand)
 sat = light = None
 if m:
@@ -70,7 +71,7 @@ if shots:
 
 # ---- the music the user chose (src/project/music.json from scripts/music.py analyze) shapes the film as much as the product
 score["pulse"], why["pulse"] = 0.0, []
-mus = json.load(open("src/project/music.json")) if os.path.exists("src/project/music.json") else {}
+mus = json.loads(Path("src/project/music.json").read_text()) if os.path.exists("src/project/music.json") else {}
 if mus.get("bpm"):
     pace, punch = mus.get("pace"), mus.get("punch", 0)
     if pace == "fast" and punch >= 0.45:
@@ -86,7 +87,7 @@ else:
 
 # ---- don't make the same film twice: the user's earlier films (written by scripts/master.sh)
 hist_path = os.path.expanduser("~/.cache/video-kit/films.jsonl")
-hist = [json.loads(l) for l in open(hist_path)] if os.path.exists(hist_path) else []
+hist = [json.loads(l) for l in Path(hist_path).read_text().splitlines()] if os.path.exists(hist_path) else []
 for h in hist[-3:]:
     if h.get("look") in score:
         score[h["look"]] -= 0.3; why[h["look"]].append(f"used for {h.get('project', '?')} already")

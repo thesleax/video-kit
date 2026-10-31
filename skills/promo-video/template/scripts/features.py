@@ -11,6 +11,7 @@ Writes out/features.md. The agent turns it into src/project/outline.md, then ask
 film and which must stay out (SKILL step 2) — or picks itself when the user leaves it to the agent.
 """
 import glob, json, os, re, sys
+from pathlib import Path
 
 root = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else "..")
 SKIP = re.compile(r"node_modules|/\.next/|/\.nuxt/|/\.svelte-kit/|/dist/|/build/|/\.git/|/\.output/")
@@ -24,7 +25,7 @@ for f in [x for p in ("**/messages/en.json", "**/locales/en*.json", "**/i18n/**/
             for k, v in d.items():
                 if isinstance(v, dict): walk(v, f"{p}{k}.")
                 elif isinstance(v, str): msgs[k] = msgs.get(k, v); msgs[p + k] = v
-        walk(json.load(open(f)))
+        walk(json.loads(Path(f).read_text()))
     except Exception:
         pass
 
@@ -71,7 +72,7 @@ def tree(f, depth=2, seen=None):
     if f in seen or not f: return seen
     seen.add(f)
     if depth:
-        for a, p in imp.findall(open(f, errors="ignore").read()):
+        for a, p in imp.findall(Path(f).read_text(errors="ignore")):
             c = resolve(f, a, p)
             if c and re.search(r"components?|features?|panels?|sections?|views?|widgets?", c) and not re.search(r"/ui/|ui-kit|icons?", c):
                 tree(c, depth - 1, seen)
@@ -88,7 +89,7 @@ def titles(src):
 rows = []
 for r, f in sorted(pages.items()):
     srcs = tree(f)
-    src = "\n".join(open(x, errors="ignore").read() for x in srcs)
+    src = "\n".join(Path(x).read_text(errors="ignore") for x in srcs)
     k = kind(r, src)
     prem = bool(PREMIUM.search(src))
     secs = titles(src)

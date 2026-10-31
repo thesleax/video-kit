@@ -1,11 +1,12 @@
 """Full-page PNGs -> scene images: sharp JPG (2x, height capped) + soft half-size copy for focus pulls.
 Pages with "tall": N in video.config.json keep N px (2x) so e.g. a footer far down stays reachable."""
 import glob, json, os
+from pathlib import Path
 from PIL import Image, ImageFilter
 Image.MAX_IMAGE_PIXELS = None  # our own screenshots, not untrusted input
 
 MAX_H = 6400  # 3200 CSS px; taller JPGs only cost memory in the renderer
-cfg = json.load(open("video.config.json"))
+cfg = json.loads(Path("video.config.json").read_text())
 tall = {p["name"]: p["tall"] for p in cfg["pages"] if p.get("tall")}
 for f in sorted(glob.glob("public/pages/*.png")):
     n = os.path.basename(f)[:-4]

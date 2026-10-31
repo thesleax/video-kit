@@ -11,10 +11,11 @@ carved bed under speech (MUSIC.bed from scripts/music.py); lower MUSIC.base befo
 """
 import scipy.signal as ss
 import json
+from pathlib import Path
 import numpy as np
 import soundfile as sf
 
-tl = json.load(open("public/timeline.json"))
+tl = json.loads(Path("public/timeline.json").read_text())
 mono = lambda a: a.mean(1) if a.ndim > 1 else a
 vo, sr = sf.read("out/stem_vo.wav"); mu, _ = sf.read("out/stem_music.wav"); fx, _ = sf.read("out/stem_sfx.wav")
 vo, mu, fx = mono(vo), mono(mu), mono(fx)

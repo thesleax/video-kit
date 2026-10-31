@@ -6,11 +6,12 @@ timeline change and always before `npm run render`:
 Errors (✗) must be fixed; warnings (!) need a look. Each line says what was found and how it was fixed last time.
 """
 import json, os, re, struct, subprocess, sys
+from pathlib import Path
 
 E, W = [], []
 err = lambda m: E.append(m)
 warn = lambda m: W.append(m)
-read = lambda p: open(p, encoding="utf-8").read() if os.path.exists(p) else ""
+read = lambda p: Path(p).read_text(encoding="utf-8") if os.path.exists(p) else ""
 
 brand, scenes, timeline = read("src/project/brand.ts"), read("src/project/scenes.tsx"), read("src/project/timeline.ts")
 outline, script = read("src/project/outline.md"), read("src/project/script.txt")
@@ -32,7 +33,7 @@ fpath = f"public/{font[1]}" if font else None
 if not fpath or not os.path.exists(fpath):
     err(f"font file missing ({fpath}) — bash scripts/font.sh \"<Family>\" or copy the site's woff2")
 else:
-    data = open(fpath, "rb").read()
+    data = Path(fpath).read_bytes()
     def tags_woff2(b):
         known = "cmap head hhea hmtx maxp name OS/2 post cvt  fpgm glyf loca prep CFF  VORG EBDT EBLC gasp hdmx kern LTSH PCLT VDMX vhea vmtx BASE GDEF GPOS GSUB EBSC JSTF MATH CBDT CBLC COLR CPAL SVG  sbix acnt avar bdat bloc bsln cvar fdsc feat fmtx fvar gvar hsty just lcar mort morx opbd prop trak Zapf Silf Glat Gloc Feat Sill".split()
         n, pos, out = struct.unpack(">H", b[12:14])[0], 48, []
@@ -160,7 +161,7 @@ if os.path.exists("node_modules"):
     for l in (r.stderr + r.stdout).splitlines():
         if "overlap" in l: err(l.strip())
     if os.path.exists("public/timeline.json"):
-        tl = json.load(open("public/timeline.json"))
+        tl = json.loads(Path("public/timeline.json").read_text())
         end = tl["end"]
         for v in tl["vo"]:
             if v["at"] + v["dur"] > end - 1.5:

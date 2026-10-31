@@ -10,14 +10,14 @@ and a limiter. NOT loudnorm: on clips under ~3 s it leaves them 15-20 dB too qui
 Word times come from whisper.cpp, but the words written to vo.json are the script's own spelling.
 """
 import json, os, re, subprocess, sys, tempfile
-import numpy as np
+from pathlib import Path
 import soundfile as sf
 
 CACHE = os.path.expanduser("~/.cache/video-kit")
 KOKORO = (f"{CACHE}/kokoro/kokoro-v1.0.onnx", f"{CACHE}/kokoro/voices-v1.0.bin")
 WHISPER = os.environ.get("WHISPER_CLI", "whisper-cli")
 WMODEL = os.environ.get("WHISPER_MODEL", f"{CACHE}/whisper/ggml-base.en.bin")
-cfg = json.load(open("video.config.json")).get("tts", {})
+cfg = json.loads(Path("video.config.json").read_text()).get("tts", {})
 VOICE, SPEED, LANG = cfg.get("voice", "af_heart"), cfg.get("speed", 1.07), cfg.get("lang", "en-us")
 TARGET_DB = -16.0
 
@@ -40,7 +40,7 @@ def whisper_words(wav):
     with tempfile.TemporaryDirectory() as d:
         mono = f"{d}/w.wav"
         ff("-i", wav, "-ar", "16000", "-ac", "1", mono)
-        out = subprocess.run([WHISPER, "-m", WMODEL, "-f", mono, "-l", "en", "-ml", "1", "-sow", "-np"], capture_output=True, text=True).stdout
+        out = subprocess.run([WHISPER, "-m", WMODEL, "-f", mono, "-l", "en", "-ml", "1", "-sow", "-np"], capture_output=True, text=True, check=True).stdout
     words = []
     for line in out.splitlines():
         m = re.match(r"\[(\d+):(\d+):([\d.]+) --> [^\]]+\]\s*(\S.*)", line)
@@ -92,7 +92,7 @@ def main():
     if sys.argv[1:2] == ["voices"]:
         k = kokoro()
         os.makedirs("out/voices", exist_ok=True)
-        line = open("src/project/script.txt").readline().split("|", 1)[1].strip()
+        line = Path("src/project/script.txt").read_text().splitlines()[0].split("|", 1)[1].strip()
         for v in ["af_heart", "af_bella", "af_nicole", "af_sarah", "af_nova", "am_michael", "am_fenrir", "bf_emma", "bm_george"]:
             a, sr = k.create(line, voice=v, speed=SPEED, lang="en-gb" if v[0] == "b" else "en-us")
             sf.write(f"out/voices/{v}.wav", a, sr)
@@ -103,16 +103,16 @@ def main():
     if "--only" in sys.argv:
         only = set(sys.argv[sys.argv.index("--only") + 1].split(","))
     vo_path = "src/project/vo.json"
-    vo = json.load(open(vo_path)) if os.path.exists(vo_path) else {}
+    vo = json.loads(Path(vo_path).read_text()) if os.path.exists(vo_path) else {}
     k = kokoro()
-    for line in open("src/project/script.txt"):
+    for line in Path("src/project/script.txt").read_text().splitlines():
         if "|" not in line:
             continue
         id_, text = (x.strip() for x in line.split("|", 1))
         if only and id_ not in only:
             continue
         voice_line(k, id_, text, vo)
-    json.dump(vo, open(vo_path, "w"), indent=1, ensure_ascii=False)
+    Path(vo_path).write_text(json.dumps(vo, indent=1, ensure_ascii=False))
     print("total speech", round(sum(v["dur"] for v in vo.values()), 1), "s")
 
 
